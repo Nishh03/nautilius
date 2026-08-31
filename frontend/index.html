@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nautilus</title>
+<style>
+  :root{
+    --bg:#080c14; --panel:#0e1524; --panel-2:#121b2e; --line:#1e2b45;
+    --ink:#e8eefc; --muted:#8296b8; --dim:#5d708f;
+    --accent:#4fd1c5; --accent-2:#7c9cff; --warn:#ffb26b; --danger:#ff7a7a;
+    --radius:14px; --shadow:0 8px 32px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.55 "Segoe UI",system-ui,-apple-system,sans-serif;
+    background-image:radial-gradient(900px 500px at 78% -8%, #12243d 0%, transparent 60%);
+    min-height:100vh;
+  }
+  a{color:var(--accent-2)}
+  header{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    padding:18px 26px; border-bottom:1px solid var(--line);
+    background:rgba(8,12,20,.85); backdrop-filter:blur(8px);
+    position:sticky; top:0; z-index:20;
+  }
+  .logo{display:flex; align-items:center; gap:11px}
+  .logo svg{filter:drop-shadow(0 0 10px rgba(79,209,197,.45))}
+  .logo h1{font-size:19px; margin:0; letter-spacing:.5px; font-weight:600}
+  .logo span{color:var(--muted); font-size:12px; display:block; font-weight:400; letter-spacing:.3px}
+  .spacer{flex:1}
+  .badge{
+    font-size:12px; padding:6px 12px; border-radius:999px;
+    border:1px solid var(--line); background:var(--panel);
+    color:var(--muted); display:flex; align-items:center; gap:7px;
+  }
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--dim)}
+  .dot.ok{background:var(--accent); box-shadow:0 0 8px var(--accent)}
+  .dot.bad{background:var(--danger); box-shadow:0 0 8px var(--danger)}
+
+  main{padding:26px; max-width:1400px; margin:0 auto}
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:22px}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px 18px;
+  }
+  .card .n{font-size:30px; font-weight:600; letter-spacing:-.5px}
+  .card .l{color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:1.1px; margin-top:2px}
+  .card.alert .n{color:var(--warn)}
+
+  .grid{display:grid; grid-template-columns:1.15fr .85fr; gap:20px; align-items:start}
+  @media (max-width:1000px){ .grid{grid-template-columns:1fr} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;
+  }
+  .panel h2{
+    margin:0; padding:14px 18px; font-size:13px; font-weight:600;
+    text-transform:uppercase; letter-spacing:1.3px; color:var(--muted);
+    border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px;
+  }
+  .panel h2 .spacer{flex:1}
+
+  /* --- orbit --- */
+  #orbit{width:100%; height:auto; display:block}
+  .orb{cursor:pointer; transition:opacity .18s}
+  .orb:hover .orb-c{stroke-width:2.5}
+  .orb-c{transition:all .2s}
+  .orb.faded{opacity:.28}
+  .orb-label{font-size:12px; fill:var(--ink); font-weight:500; pointer-events:none}
+  .orb-count{font-size:11px; fill:var(--muted); pointer-events:none}
+  .core-n{font-size:36px; font-weight:600; fill:var(--ink); pointer-events:none}
+  .core-l{font-size:10px; fill:var(--muted); letter-spacing:2px; pointer-events:none}
+  .ring{fill:none; stroke:var(--line); stroke-dasharray:3 6}
+
+  /* --- view toggle --- */
+  .tabs{display:flex; gap:4px; background:var(--bg); padding:3px; border-radius:9px; border:1px solid var(--line)}
+  .tab{
+    padding:4px 12px; border-radius:6px; font-size:11px; font-weight:600;
+    letter-spacing:.8px; color:var(--muted); cursor:pointer; text-transform:uppercase;
+  }
+  .tab.on{background:var(--accent); color:#04231f}
+  .view{display:none}
+  .view.on{display:block}
+
+  /* --- link graph --- */
+  #graph{width:100%; height:auto; display:block}
+  .edge{stroke:var(--dim); stroke-opacity:.5}
+  .edge.broken{stroke:var(--danger); stroke-opacity:.8; stroke-dasharray:4 4}
+  .gnode{cursor:pointer}
+  .gnode:hover .gn-c{stroke-width:3}
+  .gn-c{transition:all .15s}
+  .gn-t{font-size:10.5px; fill:var(--muted); pointer-events:none}
+  .gnode:hover .gn-t{fill:var(--ink)}
+  .ghost{fill:none; stroke:var(--danger); stroke-dasharray:3 3; stroke-opacity:.7}
+  .glegend{padding:9px 18px; font-size:12px; color:var(--muted); display:flex; gap:16px; flex-wrap:wrap; border-top:1px solid var(--line)}
+  .glegend i{display:inline-block; width:16px; height:0; border-top:2px solid; vertical-align:middle; margin-right:6px}
+
+  /* --- search --- */
+  #search{
+    flex:1; background:var(--bg); border:1px solid var(--line); color:var(--ink);
+    padding:7px 12px; border-radius:8px; font:inherit; font-size:13px; outline:none;
+  }
+  #search:focus{border-color:var(--accent)}
+  mark{background:rgba(79,209,197,.28); color:var(--ink); border-radius:3px; padding:0 2px}
+
+  /* --- notes --- */
+  .filterbar{
+    display:flex; align-items:center; gap:9px; padding:10px 18px;
+    border-bottom:1px solid var(--line); font-size:13px; color:var(--muted);
+    background:var(--panel-2);
+  }
+  .chip{
+    padding:4px 11px; border-radius:999px; border:1px solid var(--line);
+    background:var(--panel); font-size:12px; color:var(--ink); cursor:pointer;
+  }
+  .chip:hover{border-color:var(--accent)}
+  .notes{max-height:430px; overflow-y:auto}
+  .note{
+    padding:11px 18px; border-bottom:1px solid var(--line); cursor:pointer;
+    display:flex; gap:12px; align-items:baseline;
+  }
+  .note:last-child{border-bottom:none}
+  .note:hover{background:var(--panel-2)}
+  .note .t{flex:1; font-weight:500}
+  .note .d{font-size:11px; padding:2px 8px; border-radius:999px; color:#08131a; font-weight:600}
+  .note .m{font-size:11px; color:var(--dim); white-space:nowrap}
+
+  /* --- chat --- */
+  .ask{display:flex; gap:9px; padding:14px 18px; border-top:1px solid var(--line)}
+  #q{
+    flex:1; background:var(--bg); border:1px solid var(--line); color:var(--ink);
+    padding:11px 14px; border-radius:10px; font:inherit; outline:none;
+  }
+  #q:focus{border-color:var(--accent)}
+  button{
+    background:var(--accent); color:#04231f; border:0; padding:11px 20px;
+    border-radius:10px; font:inherit; font-weight:600; cursor:pointer;
+  }
+  button:disabled{opacity:.5; cursor:not-allowed}
+  .thread{padding:6px 18px 4px; max-height:360px; overflow-y:auto}
+  .turn{margin:14px 0}
+  .you{color:var(--accent-2); font-weight:600; margin-bottom:6px}
+  .answer{white-space:pre-wrap}
+  .sources{margin-top:11px; display:flex; flex-wrap:wrap; gap:7px; align-items:center}
+  .sources b{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px}
+  .src{
+    font-size:12px; padding:4px 10px; border-radius:8px; cursor:pointer;
+    background:var(--panel-2); border:1px solid var(--line);
+  }
+  .src:hover{border-color:var(--accent-2)}
+  .empty{color:var(--muted); padding:22px 18px; text-align:center; font-size:14px}
+  .err{color:var(--danger); padding:12px 18px; font-size:13px}
+  .thinking{color:var(--muted); font-style:italic}
+
+  /* --- note modal --- */
+  .veil{
+    position:fixed; inset:0; background:rgba(4,7,12,.78); display:none;
+    align-items:center; justify-content:center; z-index:50; padding:24px;
+  }
+  .veil.on{display:flex}
+  .modal{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    max-width:760px; width:100%; max-height:82vh; display:flex; flex-direction:column;
+    box-shadow:var(--shadow);
+  }
+  .modal header{position:static; background:none; backdrop-filter:none}
+  .modal pre{
+    margin:0; padding:20px; overflow:auto; white-space:pre-wrap;
+    font:13.5px/1.65 "Cascadia Code",Consolas,monospace; color:#cfe0f5;
+  }
+  .x{background:none; color:var(--muted); font-size:20px; padding:0 6px; line-height:1}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg width="30" height="30" viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="4.5" fill="#4fd1c5"/>
+      <ellipse cx="20" cy="20" rx="17" ry="7.5" stroke="#4fd1c5" stroke-opacity=".55" transform="rotate(28 20 20)"/>
+      <ellipse cx="20" cy="20" rx="17" ry="7.5" stroke="#7c9cff" stroke-opacity=".45" transform="rotate(-42 20 20)"/>
+      <circle cx="34" cy="13" r="2.6" fill="#7c9cff"/>
+    </svg>
+    <div><h1>Nautilus</h1><span>your notes, made answerable</span></div>
+  </div>
+  <div class="spacer"></div>
+  <div class="badge"><span class="dot" id="llmDot"></span><span id="llmText">checking…</span></div>
+  <div class="badge" id="vaultBadge">vault: …</div>
+</header>
+
+<main>
+  <div class="stats" id="stats"></div>
+
+  <div class="grid">
+    <div>
+      <div class="panel" style="margin-bottom:20px">
+        <h2>
+          <span id="viewTitle">Knowledge Orbit</span>
+          <div class="spacer"></div>
+          <div class="tabs">
+            <div class="tab on" data-view="orbit">Orbit</div>
+            <div class="tab" data-view="graph">Links</div>
+          </div>
+        </h2>
+        <div class="view on" id="view-orbit">
+          <svg id="orbit" viewBox="0 0 560 440"></svg>
+        </div>
+        <div class="view" id="view-graph">
+          <svg id="graph" viewBox="0 0 560 440"></svg>
+          <div class="glegend">
+            <span><i style="border-color:#5d708f"></i>link</span>
+            <span><i style="border-color:#ff7a7a;border-top-style:dashed"></i>broken link</span>
+            <span>node size = connections · click to open</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Notes <div class="spacer"></div><span id="noteCount"></span></h2>
+        <div class="filterbar">
+          <input id="search" placeholder="Filter notes by title…" autocomplete="off">
+          <span class="chip" id="activeChip" style="display:none"></span>
+          <span class="chip" id="clearChip" style="display:none">clear ✕</span>
+        </div>
+        <div class="notes" id="notes"><div class="empty">loading…</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Ask Your Vault</h2>
+      <div class="thread" id="thread">
+        <div class="empty">Ask a question and Nautilus will answer from your notes — and name every note it used.</div>
+      </div>
+      <div class="ask">
+        <input id="q" placeholder="What do my notes say about…?" autocomplete="off">
+        <button id="send">Ask</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="veil" id="veil">
+  <div class="modal">
+    <header><div class="logo"><h1 id="mTitle" style="font-size:16px"></h1></div><div class="spacer"></div><button class="x" id="mClose">✕</button></header>
+    <pre id="mBody"></pre>
+  </div>
+</div>
+
+<script>
+// If opened as a file:// page, talk to the local backend directly.
+const API = location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
+
+const PALETTE = ["#4fd1c5","#7c9cff","#ffb26b","#f78fb3","#9ae6b4","#c4a3ff","#ff9f9f","#7ad7f0"];
+const colorOf = {};
+let STATS = null, NOTES = [], GRAPH = null, FILTER = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+// Models return light markdown. Escape first, then re-introduce only bold,
+// italic, code and bullets - so nothing a model emits can inject markup.
+function fmt(text){
+  return esc(text)
+    .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+    .replace(/(^|\s)\*([^*\n]+)\*/g, "$1<i>$2</i>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/^[-*]\s+/gm, "• ");
+}
+
+function ago(iso){
+  const secs = (Date.now() - new Date(iso)) / 1000;
+  const steps = [[31536000,"y"],[2592000,"mo"],[604800,"w"],[86400,"d"],[3600,"h"],[60,"m"]];
+  for (const [s,l] of steps) if (secs >= s) return Math.floor(secs/s) + l + " ago";
+  return "just now";
+}
+
+async function api(path, opts){
+  const r = await fetch(API + path, opts);
+  if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || ("HTTP " + r.status));
+  return r.json();
+}
+
+/* ---------- header + stat cards ---------- */
+async function loadHealth(){
+  try{
+    const h = await api("/api/health");
+    $("llmDot").className = "dot " + (h.ready ? "ok" : "bad");
+    $("llmText").textContent = h.provider + " · " + h.model + (h.ready ? "" : " — " + h.detail);
+    $("vaultBadge").textContent = "vault: " + h.vault.split(/[\\/]/).pop();
+    $("vaultBadge").title = h.vault;
+  }catch{
+    $("llmDot").className = "dot bad";
+    $("llmText").textContent = "backend offline — run: python backend/app.py";
+  }
+}
+
+function renderStats(s){
+  const cards = [
+    ["Notes", s.total, false],
+    ["Domains", s.domains.length, false],
+    ["Links", s.links, false],
+    ["Broken links", s.broken_links, s.broken_links > 0],
+    ["Unlinked", s.orphans, false],
+    ["Words", s.words.toLocaleString(), false],
+  ];
+  $("stats").innerHTML = cards.map(([l,n,alert]) =>
+    `<div class="card${alert?" alert":""}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+}
+
+/* ---------- FR7: the orbit ---------- */
+function renderOrbit(s){
+  const CX = 280, CY = 215, svg = $("orbit");
+  const domains = s.domains;
+  const max = Math.max(...domains.map(d => d.count), 1);
+  // Two rings so a busy vault stays readable.
+  const rings = domains.length > 5 ? [155, 100] : [150];
+  let out = rings.map(r => `<circle class="ring" cx="${CX}" cy="${CY}" r="${r}"/>`).join("");
+
+  out += `<circle cx="${CX}" cy="${CY}" r="62" fill="#0e1524" stroke="#4fd1c5" stroke-opacity=".5"/>
+          <text class="core-n" x="${CX}" y="${CY+4}" text-anchor="middle">${s.total}</text>
+          <text class="core-l" x="${CX}" y="${CY+24}" text-anchor="middle">NOTES</text>`;
+
+  domains.forEach((d, i) => {
+    const ring = rings[i % rings.length];
+    const perRing = Math.ceil(domains.length / rings.length);
+    const idxInRing = Math.floor(i / rings.length);
+    const angle = (idxInRing / perRing) * Math.PI * 2 - Math.PI / 2 + (i % rings.length) * 0.42;
+    const x = CX + ring * Math.cos(angle), y = CY + ring * Math.sin(angle) * 0.86;
+    const r = 20 + 26 * Math.sqrt(d.count / max);   // area, not radius, tracks the count
+    const c = PALETTE[i % PALETTE.length];
+    colorOf[d.domain] = c;
+    const faded = FILTER && FILTER !== d.domain ? " faded" : "";
+    out += `
+      <g class="orb${faded}" data-domain="${esc(d.domain)}">
+        <line x1="${CX}" y1="${CY}" x2="${x}" y2="${y}" stroke="${c}" stroke-opacity=".22"/>
+        <circle class="orb-c" cx="${x}" cy="${y}" r="${r}" fill="${c}" fill-opacity=".16" stroke="${c}" stroke-width="1.5"/>
+        <text class="orb-label" x="${x}" y="${y+4}" text-anchor="middle">${esc(d.domain)}</text>
+        <text class="orb-count" x="${x}" y="${y + r + 15}" text-anchor="middle">${d.count}</text>
+      </g>`;
+  });
+  svg.innerHTML = out;
+
+  // FR8: one tap from overview to conversation.
+  svg.querySelectorAll(".orb").forEach(g =>
+    g.addEventListener("click", () => selectDomain(g.dataset.domain)));
+}
+
+/* ---------- FR4: the link graph ---------- */
+function renderGraph(g){
+  const W = 560, H = 440, svg = $("graph");
+  if (!g.nodes.length){ svg.innerHTML = ""; return; }
+
+  // Tiny deterministic force layout. Seeded from the slug so the picture is the
+  // same on every reload - a graph that jumps around each refresh is unreadable.
+  const idx = {}, P = g.nodes.map((n, i) => {
+    idx[n.slug] = i;
+    let seed = 0;
+    for (const ch of n.slug) seed = (seed * 31 + ch.charCodeAt(0)) % 9973;
+    const a = (seed / 9973) * Math.PI * 2, r = 60 + (seed % 110);
+    return {x: W/2 + r*Math.cos(a), y: H/2 + r*Math.sin(a)*0.8};
+  });
+  const links = g.edges
+    .map(e => [idx[e.source], idx[e.target]])
+    .filter(([a, b]) => a !== undefined && b !== undefined);
+
+  for (let step = 0; step < 260; step++){
+    for (let i = 0; i < P.length; i++){          // every node repels every other
+      for (let j = i + 1; j < P.length; j++){
+        let dx = P[j].x - P[i].x, dy = P[j].y - P[i].y;
+        let d2 = dx*dx + dy*dy || 0.01;
+        if (d2 > 34000) continue;
+        const f = 1400 / d2, d = Math.sqrt(d2);
+        dx = dx/d*f; dy = dy/d*f;
+        P[i].x -= dx; P[i].y -= dy; P[j].x += dx; P[j].y += dy;
+      }
+    }
+    for (const [a, b] of links){                 // linked nodes pull together
+      const dx = P[b].x - P[a].x, dy = P[b].y - P[a].y;
+      const d = Math.hypot(dx, dy) || 0.01, f = (d - 95) * 0.012;
+      P[a].x += dx/d*f; P[a].y += dy/d*f; P[b].x -= dx/d*f; P[b].y -= dy/d*f;
+    }
+    for (const p of P){                          // gentle pull toward the centre
+      p.x += (W/2 - p.x) * 0.008; p.y += (H/2 - p.y) * 0.008;
+      p.x = Math.max(40, Math.min(W - 40, p.x));
+      p.y = Math.max(26, Math.min(H - 26, p.y));
+    }
+  }
+
+  let out = links.map(([a, b]) =>
+    `<line class="edge" x1="${P[a].x}" y1="${P[a].y}" x2="${P[b].x}" y2="${P[b].y}"/>`).join("");
+
+  // A broken link points at a note that does not exist, drawn as a dashed stub
+  // to an empty circle - the visible edge of unfinished thinking.
+  g.broken.forEach((b, k) => {
+    const i = idx[b.source];
+    if (i === undefined) return;
+    const a = (k / Math.max(g.broken.length, 1)) * Math.PI * 2;
+    const x = P[i].x + 44*Math.cos(a), y = P[i].y + 44*Math.sin(a);
+    out += `<line class="edge broken" x1="${P[i].x}" y1="${P[i].y}" x2="${x}" y2="${y}"/>
+            <circle class="ghost" cx="${x}" cy="${y}" r="6"><title>broken: ${esc(b.target)}</title></circle>`;
+  });
+
+  g.nodes.forEach((n, i) => {
+    const c = colorOf[n.domain] || "#4fd1c5";
+    const r = 5 + Math.min(n.degree, 8) * 1.5;
+    const faded = FILTER && FILTER !== n.domain ? ' opacity=".25"' : "";
+    out += `<g class="gnode" data-slug="${esc(n.slug)}"${faded}>
+      <circle class="gn-c" cx="${P[i].x}" cy="${P[i].y}" r="${r}" fill="${c}" fill-opacity=".3" stroke="${c}" stroke-width="1.5"/>
+      <text class="gn-t" x="${P[i].x}" y="${P[i].y - r - 5}" text-anchor="middle">${esc(n.title.slice(0, 22))}</text>
+      <title>${esc(n.title)} — ${n.degree} connection${n.degree === 1 ? "" : "s"}</title>
+    </g>`;
+  });
+
+  svg.innerHTML = out;
+  svg.querySelectorAll(".gnode").forEach(el =>
+    el.addEventListener("click", () => openNote(el.dataset.slug)));
+}
+
+document.querySelectorAll(".tab").forEach(tab => tab.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t === tab));
+  const view = tab.dataset.view;
+  $("view-orbit").classList.toggle("on", view === "orbit");
+  $("view-graph").classList.toggle("on", view === "graph");
+  $("viewTitle").textContent = view === "orbit" ? "Knowledge Orbit" : "Link Graph";
+  if (view === "graph" && GRAPH) renderGraph(GRAPH);
+}));
+
+/* ---------- FR2 + FR8: note list, search, and filtering ---------- */
+function renderNotes(){
+  const q = $("search").value.trim().toLowerCase();
+  let list = FILTER ? NOTES.filter(n => n.domain === FILTER) : NOTES;
+  if (q) list = list.filter(n => n.title.toLowerCase().includes(q));
+
+  const label = [q ? `matching "${q}"` : "", FILTER ? "in " + FILTER : ""]
+    .filter(Boolean).join(" ") || "total";
+  $("noteCount").textContent = list.length + " " + label;
+
+  const hi = t => q
+    ? esc(t).replace(new RegExp("(" + q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "ig"), "<mark>$1</mark>")
+    : esc(t);
+
+  $("notes").innerHTML = list.length ? list.map(n => `
+    <div class="note" data-slug="${esc(n.slug)}">
+      <span class="t">${hi(n.title)}</span>
+      <span class="d" style="background:${colorOf[n.domain]||"#4fd1c5"}">${esc(n.domain)}</span>
+      <span class="m">${ago(n.modified)}</span>
+    </div>`).join("") : `<div class="empty">No notes match.</div>`;
+  $("notes").querySelectorAll(".note").forEach(el =>
+    el.addEventListener("click", () => openNote(el.dataset.slug)));
+
+  $("activeChip").style.display = FILTER ? "" : "none";
+  $("clearChip").style.display = (FILTER || q) ? "" : "none";
+  if (FILTER){
+    $("activeChip").textContent = FILTER;
+    $("activeChip").style.borderColor = colorOf[FILTER] || "";
+  }
+}
+$("search").addEventListener("input", renderNotes);
+
+function selectDomain(d){
+  FILTER = (FILTER === d) ? null : d;      // clicking the same domain toggles it off
+  renderOrbit(STATS);
+  if (GRAPH) renderGraph(GRAPH);
+  renderNotes();
+  if (FILTER){
+    $("q").value = `What do my notes on ${FILTER} cover?`;   // FR8: pre-filled question
+    $("q").focus();
+  }
+}
+$("clearChip").addEventListener("click", () => {
+  FILTER = null; $("search").value = "";
+  renderOrbit(STATS); if (GRAPH) renderGraph(GRAPH); renderNotes();
+});
+
+/* ---------- FR5 + FR6: ask, answer, cite ---------- */
+async function ask(){
+  const question = $("q").value.trim();
+  if (!question) return;
+  const thread = $("thread");
+  if (thread.querySelector(".empty")) thread.innerHTML = "";
+
+  const turn = document.createElement("div");
+  turn.className = "turn";
+  turn.innerHTML = `<div class="you">${esc(question)}</div>
+                    <div class="answer thinking">searching your notes…</div>`;
+  thread.appendChild(turn);
+  thread.scrollTop = thread.scrollHeight;
+  $("q").value = ""; $("send").disabled = true;
+
+  try{
+    const r = await api("/api/ask", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({question, domain: FILTER}),
+    });
+    const srcs = r.sources.map(s =>
+      `<span class="src" data-slug="${esc(s.slug)}">${esc(s.title)}</span>`).join("");
+    turn.innerHTML = `<div class="you">${esc(question)}</div>
+      <div class="answer">${fmt(r.answer)}</div>
+      ${r.sources.length ? `<div class="sources"><b>sources</b>${srcs}</div>` : ""}`;
+    turn.querySelectorAll(".src").forEach(el =>
+      el.addEventListener("click", () => openNote(el.dataset.slug)));
+  }catch(e){
+    turn.innerHTML = `<div class="you">${esc(question)}</div><div class="err">${esc(e.message)}</div>`;
+  }finally{
+    $("send").disabled = false;
+    thread.scrollTop = thread.scrollHeight;
+  }
+}
+$("send").addEventListener("click", ask);
+$("q").addEventListener("keydown", e => { if (e.key === "Enter") ask(); });
+
+/* ---------- source notes are one click away (makes FR6 verifiable) ---------- */
+async function openNote(slug){
+  try{
+    const n = await api("/api/note/" + slug.split("/").map(encodeURIComponent).join("/"));
+    $("mTitle").textContent = n.title;
+    $("mBody").textContent = n.body;
+    $("veil").classList.add("on");
+  }catch(e){ alert(e.message); }
+}
+$("mClose").addEventListener("click", () => $("veil").classList.remove("on"));
+$("veil").addEventListener("click", e => { if (e.target === $("veil")) $("veil").classList.remove("on"); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("veil").classList.remove("on"); });
+
+/* ---------- boot ---------- */
+async function boot(){
+  await loadHealth();
+  try{
+    // Three independent reads, so fetch them together rather than in sequence.
+    const [stats, notes, graph] = await Promise.all([
+      api("/api/stats"), api("/api/notes"), api("/api/graph"),
+    ]);
+    STATS = stats; NOTES = notes.notes; GRAPH = graph;
+
+    if (!STATS.total){
+      $("notes").innerHTML = `<div class="empty">This vault is empty.<br>
+        Drop some <code>.md</code> files into it, or point <code>VAULT_PATH</code>
+        in <code>.env</code> at your own notes, then reload.</div>`;
+      return;
+    }
+    renderStats(STATS); renderOrbit(STATS); renderNotes();
+  }catch(e){
+    $("notes").innerHTML = `<div class="err">Cannot reach the backend (${esc(e.message)}).<br><br>
+      Start it with:<br><code>python -m uvicorn app:app --app-dir backend</code></div>`;
+  }
+}
+boot();
+
+// The vault is the source of truth and may change on disk underneath us, so
+// pick up external edits without needing a manual reload.
+setInterval(async () => {
+  if (document.hidden) return;
+  try{
+    const s = await api("/api/stats");
+    if (JSON.stringify(s) === JSON.stringify(STATS)) return;   // nothing changed
+    STATS = s;
+    NOTES = (await api("/api/notes")).notes;
+    GRAPH = await api("/api/graph");
+    renderStats(STATS); renderOrbit(STATS); renderNotes();
+    if ($("view-graph").classList.contains("on")) renderGraph(GRAPH);
+  }catch{ /* backend restarting - the next tick will pick it up */ }
+}, 10000);
+</script>
+</body>
+</html>
