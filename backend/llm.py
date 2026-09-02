@@ -73,19 +73,22 @@ def _ollama(prompt: str) -> str:
 def _groq(prompt: str, _attempt: int = 0) -> str:
     if not config.GROQ_API_KEY:
         raise LLMError("GROQ_API_KEY is not set in .env")
-    r = httpx.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {config.GROQ_API_KEY}"},
-        json={
-            "model": config.GROQ_MODEL,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.2,
-        },
-        timeout=TIMEOUT,
-    )
+    try:
+        r = httpx.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {config.GROQ_API_KEY}"},
+            json={
+                "model": config.GROQ_MODEL,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+                "temperature": 0.2,
+            },
+            timeout=TIMEOUT,
+        )
+    except httpx.RequestError as exc:
+        raise LLMError(f"Cannot reach Groq: {exc}") from exc
 
     # The free tier is capped per minute, so a batch job hits 429 routinely.
     # Waiting is the correct response, not failing - but only a few times, or a
@@ -120,17 +123,20 @@ def _retry_after(response: httpx.Response) -> float:
 def _gemini(prompt: str) -> str:
     if not config.GEMINI_API_KEY:
         raise LLMError("GEMINI_API_KEY is not set in .env")
-    r = httpx.post(
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{config.GEMINI_MODEL}:generateContent",
-        headers={"x-goog-api-key": config.GEMINI_API_KEY},
-        json={
-            "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.2},
-        },
-        timeout=TIMEOUT,
-    )
+    try:
+        r = httpx.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{config.GEMINI_MODEL}:generateContent",
+            headers={"x-goog-api-key": config.GEMINI_API_KEY},
+            json={
+                "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.2},
+            },
+            timeout=TIMEOUT,
+        )
+    except httpx.RequestError as exc:
+        raise LLMError(f"Cannot reach Gemini: {exc}") from exc
     if r.status_code != 200:
         raise LLMError(f"Gemini returned {r.status_code}: {r.text[:200]}")
     return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
