@@ -83,7 +83,7 @@ def main() -> int:
         for n in included
     )
     try:
-        text = common.llm.complete(PROMPT.format(days=DAYS, notes=blocks))
+        text = common.think(PROMPT.format(days=DAYS, notes=blocks))
     except common.llm.LLMError as exc:
         common.say(f"  ! LLM unavailable: {exc}")
         common.record("digest", args.apply, "llm unavailable")

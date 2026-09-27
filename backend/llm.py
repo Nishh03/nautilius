@@ -19,8 +19,8 @@ import config
 from vault import Note
 
 TIMEOUT = 300.0         # a cold 7B model on CPU can take minutes to load
-GROQ_RETRIES = 3        # free tier is capped per minute; waiting usually clears it
-GEMINI_RETRIES = 4      # shared free capacity returns 503 under load
+GROQ_RETRIES = 2        # free tier is capped per minute; waiting usually clears it
+GEMINI_RETRIES = 1      # one quick retry, then let the chain fall over
 
 SYSTEM_PROMPT = """You are Nautilus, a research assistant that answers strictly from a user's personal notes.
 
@@ -143,7 +143,7 @@ def _gemini(prompt: str, _attempt: int = 0) -> str:
     # 503 means the shared free capacity is busy, 429 means the per-minute cap.
     # Both clear on their own, so waiting beats failing the whole batch run.
     if r.status_code in (429, 503) and _attempt < GEMINI_RETRIES:
-        wait = _retry_after(r) if r.status_code == 429 else 5.0 * (_attempt + 1)
+        wait = min(_retry_after(r), 8.0) if r.status_code == 429 else 4.0
         print(f"    (gemini busy [{r.status_code}], waiting {wait:.0f}s then retrying)")
         time.sleep(wait)
         return _gemini(prompt, _attempt + 1)

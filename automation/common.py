@@ -123,6 +123,17 @@ class Unchecked:
         return f"Unchecked({self.reason!r})"
 
 
+def think(prompt: str) -> str:
+    """One LLM call on behalf of an agent.
+
+    Agents route through AGENT_PROVIDER when it is set, so batch work can run
+    on a local model with no per-minute cap while interactive chat stays on a
+    fast cloud one. Leaving it blank means agents use the same provider as
+    everything else.
+    """
+    return llm.complete(prompt, provider=config.AGENT_PROVIDER or None)
+
+
 def ask_json(prompt: str, fallback):
     """Ask the model for JSON and parse it defensively.
 
@@ -134,7 +145,7 @@ def ask_json(prompt: str, fallback):
     tell a clean result from a missing one.
     """
     try:
-        raw = llm.complete(prompt)
+        raw = think(prompt)
     except llm.LLMError as exc:
         say(f"  ! LLM unavailable: {exc}")
         return Unchecked(str(exc)[:120]) if fallback is not None else fallback
