@@ -29,6 +29,9 @@ import config  # noqa: E402
 import llm  # noqa: E402
 import vault  # noqa: E402
 
+# Re-exported so agent scripts can use them without re-importing.
+__all__ = ["config", "llm", "vault", "Path"]
+
 HISTORY = Path(__file__).resolve().parent / "history.log"
 
 

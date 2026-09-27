@@ -10,6 +10,11 @@ POST /api/ask       FR5, FR6  - grounded answer with named sources
 """
 from __future__ import annotations
 
+import subprocess
+import sys
+import time
+from datetime import datetime, timezone
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -22,6 +27,26 @@ import retrieve
 import vault
 
 app = FastAPI(title="Nautilus", version="0.1.0")
+
+STARTED = time.time()
+AUTOMATION = config.PROJECT_ROOT / "automation"
+HISTORY = AUTOMATION / "history.log"
+sys.path.insert(0, str(AUTOMATION))
+import registry  # noqa: E402
+
+
+def _last_runs() -> dict[str, dict]:
+    """Last run of each agent, straight out of the audit log."""
+    runs: dict[str, dict] = {}
+    if not HISTORY.exists():
+        return runs
+    for line in HISTORY.read_text(encoding="utf-8").splitlines():
+        parts = line.split(None, 4)
+        if len(parts) < 5:
+            continue
+        runs[parts[2]] = {"when": f"{parts[0]} {parts[1]}",
+                          "mode": parts[3], "summary": parts[4].strip()}
+    return runs
 
 # The frontend is a plain file the user may open directly, so allow any origin.
 app.add_middleware(
@@ -43,6 +68,178 @@ def health():
     info["vault"] = str(config.VAULT_PATH)
     info["vault_exists"] = config.VAULT_PATH.exists()
     return info
+
+
+SUBSTANTIAL = 40      # words before a topic counts as learned, not just named
+
+
+@app.get("/api/path")
+def learning_path():
+    """The learning path: stages, topics, and what is unlocked next.
+
+    Stages come from the roadmap month notes; the topics of a stage are the
+    notes that month links to. A topic is DONE when its note exists and has
+    real content, NEXT when it sits in the earliest stage that is not finished,
+    and LOCKED when a stage ahead of that still has work in it.
+
+    The plan grades itself against the vault, so there is no second checklist
+    to keep in sync - writing the note is what completes the topic.
+    """
+    notes = vault.load_notes()
+    by_title = {n.title.lower(): n for n in notes}
+
+    months = sorted(
+        (n for n in notes
+         if n.domain == "roadmap" and n.title.lower().startswith("month")),
+        key=lambda n: n.title,
+    )
+
+    stages = []
+    for m in months:
+        topics = []
+        for target in m.links:
+            t = target.strip()
+            if t.lower().startswith("month") or t.lower() == "six month plan":
+                continue          # navigation between stages, not a topic
+            hit = by_title.get(t.lower())
+            done = bool(hit and len(hit.body.split()) >= SUBSTANTIAL)
+            topics.append({
+                "title": t,
+                "slug": hit.slug if hit else None,
+                "domain": hit.domain if hit else None,
+                "words": len(hit.body.split()) if hit else 0,
+                "links": [l for l in (hit.links if hit else [])],
+                "done": done,
+            })
+        # de-duplicate while preserving the order the plan lists them in
+        seen, unique = set(), []
+        for t in topics:
+            if t["title"].lower() in seen:
+                continue
+            seen.add(t["title"].lower())
+            unique.append(t)
+        stages.append({
+            "stage": m.title,
+            "slug": m.slug,
+            "topics": unique,
+            "done": sum(t["done"] for t in unique),
+            "total": len(unique),
+        })
+
+    # The current stage is the first one not yet finished. Everything before it
+    # is cleared, everything after it is locked.
+    current = next((i for i, s in enumerate(stages) if s["done"] < s["total"]),
+                   len(stages) - 1 if stages else 0)
+    for i, st in enumerate(stages):
+        st["state"] = "cleared" if i < current else ("current" if i == current else "locked")
+        for t in st["topics"]:
+            t["state"] = ("done" if t["done"]
+                          else "next" if i == current
+                          else "locked")
+
+    total = sum(s["total"] for s in stages)
+    done = sum(s["done"] for s in stages)
+    up_next = [t["title"] for s in stages if s["state"] == "current"
+               for t in s["topics"] if t["state"] == "next"]
+    return {
+        "stages": stages,
+        "current": current,
+        "done": done,
+        "total": total,
+        "pct": round(100 * done / total) if total else 0,
+        "up_next": up_next,
+    }
+
+
+@app.get("/api/agents")
+def agents():
+    """Every agent, its schedule, and when it last ran."""
+    runs = _last_runs()
+    return {"agents": [
+        {"name": a.name, "label": a.label, "blurb": a.blurb,
+         "schedule": a.schedule, "network": a.network, "writes": a.writes,
+         "slow": a.slow, "last": runs.get(a.name)}
+        for a in registry.AGENTS
+    ]}
+
+
+@app.post("/api/agents/{name}/run")
+def run_agent(name: str):
+    """Dry-run one agent and return what it printed.
+
+    Deliberately dry-run only. This endpoint executes a script, so it takes no
+    arguments from the caller beyond a name checked against the registry - the
+    command is built entirely from values this process already trusts. Writing
+    to the vault stays a deliberate act at a terminal, not something a web
+    request can trigger.
+    """
+    if not registry.exists(name):
+        raise HTTPException(status_code=404, detail=f"No agent '{name}'")
+    script = AUTOMATION / f"{name}.py"
+    if not script.exists():
+        raise HTTPException(status_code=501, detail=f"{name}.py is not built yet")
+
+    started = time.time()
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script)],          # no --apply, ever, from here
+            capture_output=True, text=True, timeout=150,
+            cwd=str(config.PROJECT_ROOT),
+            encoding="utf-8", errors="replace",
+        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(
+            status_code=504,
+            detail=f"{name} was still running after 150s. Free-tier rate limits "
+                   f"can make this slow - run it in a terminal to watch it.",
+        )
+    out = (proc.stdout or "") + (proc.stderr or "")
+    return {"agent": name, "ok": proc.returncode == 0,
+            "seconds": round(time.time() - started, 1),
+            "output": out.strip()[-6000:]}
+
+
+@app.get("/api/system")
+def system():
+    """Live system state for the status rail.
+
+    Every row the dashboard shows is read from somewhere real - the running
+    process, the vault on disk, or the automation audit log. Nothing here is
+    a placeholder, which is the whole point of showing it.
+    """
+    notes = vault.load_notes()
+    graph = vault.build_graph(notes)
+    info = llm.health()
+
+    # Last run of each scheduled task, straight out of the audit log.
+    tasks: dict[str, dict] = {}
+    if HISTORY.exists():
+        for line in HISTORY.read_text(encoding="utf-8").splitlines():
+            parts = line.split(None, 4)
+            if len(parts) < 5:
+                continue
+            stamp, _, task, mode, summary = parts[0], parts[1], parts[2], parts[3], parts[4]
+            tasks[task] = {"when": f"{stamp} {parts[1]}", "mode": mode,
+                           "summary": summary.strip()}
+
+    up = int(time.time() - STARTED)
+    return {
+        "provider": info["provider"],
+        "model": info["model"],
+        "ready": info.get("ready", False),
+        "detail": info.get("detail", ""),
+        "vault": config.VAULT_PATH.name,
+        "vault_path": str(config.VAULT_PATH),
+        "notes": len(notes),
+        "domains": len({n.domain for n in notes}),
+        "edges": len(graph["edges"]),
+        "broken": len(graph["broken"]),
+        "orphans": len(graph["orphans"]),
+        "retrieval": f"keyword · top {config.TOP_K}",
+        "tasks": tasks,
+        "uptime": f"{up // 3600:02d}:{up % 3600 // 60:02d}:{up % 60:02d}",
+        "now": datetime.now(timezone.utc).strftime("%H:%M:%S"),
+    }
 
 
 @app.get("/api/stats")

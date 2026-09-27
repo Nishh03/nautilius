@@ -6,9 +6,10 @@
 <title>Nautilus</title>
 <style>
   :root{
-    --bg:#080c14; --panel:#0e1524; --panel-2:#121b2e; --line:#1e2b45;
-    --ink:#e8eefc; --muted:#8296b8; --dim:#5d708f;
-    --accent:#4fd1c5; --accent-2:#7c9cff; --warn:#ffb26b; --danger:#ff7a7a;
+    --bg:#04070d; --panel:#080e18; --panel-2:#0c1523; --line:#16243a;
+    --ink:#e8f2ff; --muted:#7d93b4; --dim:#526a88;
+    --accent:#35e0d4; --accent-2:#6aa6ff; --warn:#ffc46b; --danger:#ff6b8a;
+    --hud:#1d3350;
     --radius:14px; --shadow:0 8px 32px rgba(0,0,0,.45);
   }
   *{box-sizing:border-box}
@@ -92,7 +93,7 @@
   .gnode{cursor:pointer}
   .gnode:hover .gn-c{stroke-width:3}
   .gn-c{transition:all .15s}
-  .gn-t{font-size:10.5px; fill:var(--muted); pointer-events:none}
+  .gn-t{font-size:10px; fill:#8ea6c0; pointer-events:none; letter-spacing:.2px}
   .gnode:hover .gn-t{fill:var(--ink)}
   .ghost{fill:none; stroke:var(--danger); stroke-dasharray:3 3; stroke-opacity:.7}
   .glegend{padding:9px 18px; font-size:12px; color:var(--muted); display:flex; gap:16px; flex-wrap:wrap; border-top:1px solid var(--line)}
@@ -237,6 +238,184 @@
   @media (prefers-reduced-motion:reduce){
     *,*::after{animation:none !important; transition:none !important}
   }
+
+  /* ===== mission-control framing ==================================== */
+  body::after{            /* faint scanlines + vignette over everything */
+    content:""; position:fixed; inset:0; z-index:2; pointer-events:none;
+    background:
+      repeating-linear-gradient(0deg, rgba(120,190,255,.022) 0 1px, transparent 1px 3px),
+      radial-gradient(130% 100% at 50% 0%, transparent 55%, rgba(0,0,0,.55) 100%);
+  }
+
+  .panel{position:relative}
+  .panel::before, .panel::after{
+    content:""; position:absolute; width:13px; height:13px;
+    border-color:var(--accent); opacity:.45; pointer-events:none; z-index:3;
+  }
+  .panel::before{top:7px; left:7px; border-top:1px solid; border-left:1px solid}
+  .panel::after{bottom:7px; right:7px; border-bottom:1px solid; border-right:1px solid}
+
+  .panel h2{
+    font-family:"Cascadia Code",Consolas,monospace;
+    font-size:11px; letter-spacing:2px;
+  }
+  .card .l{font-family:"Cascadia Code",Consolas,monospace; font-size:10px; letter-spacing:1.4px}
+  .card .n{font-variant-numeric:tabular-nums}
+
+  /* ===== live system rail =========================================== */
+  .rail{margin-bottom:20px}
+  .rail .body{padding:4px 0 6px}
+  .row{
+    display:grid; grid-template-columns:96px minmax(0,1fr) auto;
+    gap:10px; align-items:center;
+    padding:6px 18px; font-family:"Cascadia Code",Consolas,monospace; font-size:11px;
+  }
+  .row + .row{border-top:1px solid rgba(22,36,58,.55)}
+  .row .k{color:var(--dim); letter-spacing:1px}
+  .row .v{color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .row .s{
+    display:flex; align-items:center; gap:5px;
+    color:var(--muted); font-size:9.5px; letter-spacing:1.2px;
+  }
+  .row .s i{width:5px; height:5px; border-radius:50%; background:var(--dim); display:block}
+  .row.ok .s{color:var(--accent)}
+  .row.ok .s i{background:var(--accent); box-shadow:0 0 7px var(--accent); animation:blink 2.4s infinite}
+  .row.warn .s{color:var(--warn)}
+  .row.warn .s i{background:var(--warn); box-shadow:0 0 7px var(--warn)}
+  .row.bad .s{color:var(--danger)}
+  .row.bad .s i{background:var(--danger); box-shadow:0 0 7px var(--danger)}
+
+  .clock{
+    font-family:"Cascadia Code",Consolas,monospace; font-size:11px;
+    color:var(--accent); letter-spacing:1.5px; font-variant-numeric:tabular-nums;
+  }
+
+  /* ===== activity line under the ask box ============================ */
+  .activity{
+    padding:7px 18px 11px; font-family:"Cascadia Code",Consolas,monospace;
+    font-size:10px; letter-spacing:1.3px; color:var(--dim);
+    display:flex; align-items:center; gap:8px; min-height:28px;
+  }
+  .activity.live{color:var(--accent)}
+  .activity i{
+    width:5px; height:5px; border-radius:50%; background:currentColor; display:block;
+  }
+  .activity.live i{animation:blink 1s infinite; box-shadow:0 0 7px var(--accent)}
+
+  /* ===== graph, glowing ============================================= */
+  .e-glow{fill:none; stroke-linecap:round}
+  .e-core{fill:none; stroke-linecap:round}
+  .n-halo{pointer-events:none}
+  .gn-t.quiet{opacity:0; transition:opacity .18s}
+  .gnode:hover .gn-t.quiet{opacity:1}
+  .particle{pointer-events:none}
+  .tab.on{box-shadow:0 0 14px rgba(53,224,212,.45)}
+
+  /* ===== agent console ============================================== */
+  .agent{
+    display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px 14px;
+    padding:12px 18px; border-bottom:1px solid var(--line); align-items:center;
+  }
+  .agent:last-child{border-bottom:none}
+  .agent:hover{background:var(--panel-2)}
+  .agent .top{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+  .agent .nm{font-weight:600; font-size:14px}
+  .agent .tagx{
+    font-family:"Cascadia Code",Consolas,monospace; font-size:9px;
+    letter-spacing:1px; padding:2px 6px; border-radius:4px;
+    border:1px solid var(--line); color:var(--dim);
+  }
+  .agent .tagx.net{color:var(--accent-2); border-color:#2a3f66}
+  .agent .tagx.slow{color:var(--warn); border-color:#4a3a1e}
+  .agent .bl{color:var(--muted); font-size:12.5px; margin-top:3px}
+  .agent .meta{
+    font-family:"Cascadia Code",Consolas,monospace; font-size:10.5px;
+    color:var(--dim); margin-top:5px; display:flex; gap:14px; flex-wrap:wrap;
+  }
+  .agent .meta b{color:var(--accent); font-weight:400}
+  .run{
+    background:transparent; border:1px solid var(--line); color:var(--ink);
+    padding:7px 14px; border-radius:8px; font-size:12px; font-weight:600;
+    font-family:"Cascadia Code",Consolas,monospace; letter-spacing:1px;
+    cursor:pointer; transition:all .18s; white-space:nowrap;
+  }
+  .run:hover:not(:disabled){border-color:var(--accent); color:var(--accent);
+    box-shadow:0 0 14px rgba(53,224,212,.18)}
+  .run:disabled{opacity:.45; cursor:progress}
+  .run.missing{opacity:.35; cursor:not-allowed}
+
+  /* ===== learning path ============================================== */
+  .pathwrap{padding:16px 18px 20px; overflow-x:auto}
+  .pathhead{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    padding:0 0 14px; font-family:"Cascadia Code",Consolas,monospace; font-size:11px;
+    color:var(--dim); letter-spacing:1px;
+  }
+  .meter{
+    flex:1; min-width:140px; height:5px; border-radius:3px;
+    background:var(--line); overflow:hidden;
+  }
+  .meter i{
+    display:block; height:100%; border-radius:3px; width:0;
+    background:linear-gradient(90deg,var(--accent-2),var(--accent));
+    transition:width .9s cubic-bezier(.2,.7,.3,1);
+  }
+  .lanes{display:flex; gap:0; align-items:flex-start; min-width:min-content}
+  .lane{min-width:178px; flex:1; display:flex; flex-direction:column; gap:9px; position:relative}
+  .lane + .lane{margin-left:26px}
+  .lane + .lane::before{
+    content:""; position:absolute; left:-26px; top:26px; width:26px; height:1px;
+    background:linear-gradient(90deg,transparent,var(--line));
+  }
+  .lane .cap{
+    font-family:"Cascadia Code",Consolas,monospace; font-size:10px; letter-spacing:1.1px;
+    color:var(--dim); display:flex; align-items:center; gap:7px; padding-bottom:3px;
+  }
+  .lane .cap b{color:var(--muted); font-weight:400}
+  .lane.cleared .cap b{color:var(--accent)}
+  .lane.current .cap b{color:var(--accent-2)}
+  .lane .cap .pip{width:6px; height:6px; border-radius:50%; background:var(--line); flex:none}
+  .lane.cleared .cap .pip{background:var(--accent); box-shadow:0 0 8px var(--accent)}
+  .lane.current .cap .pip{background:var(--accent-2); box-shadow:0 0 9px var(--accent-2);
+    animation:blink 1.8s infinite}
+
+  .tnode{
+    border:1px solid var(--line); border-radius:9px; padding:9px 11px;
+    background:var(--panel-2); cursor:pointer; position:relative;
+    transition:transform .16s, border-color .16s, box-shadow .16s;
+    animation:riseIn .35s both;
+  }
+  .tnode .tt{font-size:12.5px; line-height:1.35; font-weight:500}
+  .tnode .ts{
+    font-family:"Cascadia Code",Consolas,monospace; font-size:9px;
+    letter-spacing:1px; color:var(--dim); margin-top:4px; display:block;
+  }
+  .tnode:hover{transform:translateY(-2px)}
+
+  .tnode.done{border-color:rgba(53,224,212,.4)}
+  .tnode.done .tt::before{content:"\2713  "; color:var(--accent)}
+  .tnode.done:hover{border-color:var(--accent); box-shadow:0 0 16px rgba(53,224,212,.16)}
+
+  .tnode.next{
+    border-color:var(--accent-2); background:rgba(106,166,255,.07);
+    box-shadow:0 0 0 1px rgba(106,166,255,.18);
+  }
+  .tnode.next .tt::before{content:"\2192  "; color:var(--accent-2)}
+  .tnode.next .ts{color:var(--accent-2)}
+  .tnode.next:hover{box-shadow:0 0 20px rgba(106,166,255,.25)}
+
+  .tnode.locked{opacity:.42; cursor:default; border-style:dashed}
+  .tnode.locked:hover{transform:none}
+
+  .upnext{
+    margin-top:16px; padding:12px 14px; border-radius:10px;
+    background:rgba(106,166,255,.07); border:1px solid rgba(106,166,255,.25);
+    font-size:13px;
+  }
+  .upnext b{
+    display:block; font-family:"Cascadia Code",Consolas,monospace; font-size:10px;
+    letter-spacing:1.4px; color:var(--accent-2); margin-bottom:6px; font-weight:400;
+  }
 </style>
 </head>
 <body>
@@ -265,14 +444,18 @@
     <div>
       <div class="panel" style="margin-bottom:20px">
         <h2>
-          <span id="viewTitle">Knowledge Orbit</span>
+          <span id="viewTitle">Learning Path</span>
           <div class="spacer"></div>
           <div class="tabs">
-            <div class="tab on" data-view="orbit">Orbit</div>
+            <div class="tab on" data-view="path">Path</div>
+            <div class="tab" data-view="orbit">Orbit</div>
             <div class="tab" data-view="graph">Links</div>
           </div>
         </h2>
-        <div class="view on" id="view-orbit">
+        <div class="view on" id="view-path">
+          <div id="path"><div class="empty">mapping your path…</div></div>
+        </div>
+        <div class="view" id="view-orbit">
           <svg id="orbit" viewBox="0 0 560 440"></svg>
         </div>
         <div class="view" id="view-graph">
@@ -283,6 +466,11 @@
             <span>node size = connections · click to open</span>
           </div>
         </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:20px">
+        <h2>Agents <div class="spacer"></div><span id="agentCount"></span></h2>
+        <div id="agents"><div class="empty">loading agents…</div></div>
       </div>
 
       <div class="panel">
@@ -296,6 +484,14 @@
       </div>
     </div>
 
+    <div>
+    <div class="panel rail">
+      <h2>System <div class="spacer"></div><span class="clock" id="clock">--:--:--</span></h2>
+      <div class="body" id="rail">
+        <div class="row"><span class="k">BOOTING</span><span class="v">reading system state…</span><span class="s"><i></i>WAIT</span></div>
+      </div>
+    </div>
+
     <div class="panel">
       <h2>Ask Your Vault</h2>
       <div class="thread" id="thread">
@@ -305,6 +501,8 @@
         <input id="q" placeholder="What do my notes say about…?" autocomplete="off">
         <button id="send">Ask</button>
       </div>
+      <div class="activity" id="activity"><i></i><span>IDLE · GROUNDED ANSWERS ONLY</span></div>
+    </div>
     </div>
   </div>
 </main>
@@ -320,7 +518,8 @@
 // If opened as a file:// page, talk to the local backend directly.
 const API = location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
 
-const PALETTE = ["#4fd1c5","#7c9cff","#ffb26b","#f78fb3","#9ae6b4","#c4a3ff","#ff9f9f","#7ad7f0"];
+const PALETTE = ["#5fc9bf","#7fa3d8","#d9ac74","#c98aa6","#8fbf92",
+                 "#a894c9","#cf8f8f","#7fb6c9","#c7b775","#9bb88a"];
 const colorOf = {};
 let STATS = null, NOTES = [], GRAPH = null, FILTER = null;
 
@@ -454,6 +653,167 @@ function renderStats(s){
 /* ---------- FR7: the orbit ---------- */
 let orbitFrame = null, ORBS = [];
 
+
+
+
+/* ---------- the learning path ---------------------------------------
+   Stages come from the roadmap; a topic is cleared when the note covering
+   it actually exists and has been written. The plan grades itself against
+   the vault, so there is no second checklist to keep in sync.           */
+let PATH = null;
+
+async function renderPath(){
+  if (!PATH){
+    try{ PATH = await api("/api/path"); }
+    catch{ $("path").innerHTML = '<div class="err">Cannot reach the backend.</div>'; return; }
+  }
+  const d = PATH;
+  if (!d.stages.length){
+    $("path").innerHTML = '<div class="empty">No roadmap found. Add month notes to a ' +
+      '<code>roadmap</code> domain and the path draws itself.</div>';
+    return;
+  }
+
+  const lanes = d.stages.map((st, i) => {
+    const nodes = st.topics.map((t, k) => {
+      const note = t.state === "done" ? t.words + " WORDS"
+                 : t.state === "next" ? "WRITE THIS NEXT" : "LOCKED";
+      return '<div class="tnode ' + t.state + '"' +
+             (t.slug ? ' data-slug="' + esc(t.slug) + '"' : '') +
+             ' style="animation-delay:' + (i * 70 + k * 30) + 'ms"' +
+             ' title="' + (t.slug ? "open this note" : "not written yet") + '">' +
+             '<div class="tt">' + esc(t.title) + '</div>' +
+             '<span class="ts">' + note + '</span></div>';
+    }).join("");
+    const label = st.stage.replace(/^Month\s*/i, "M").replace(/\s*-\s*/, " \u00b7 ");
+    return '<div class="lane ' + st.state + '">' +
+           '<div class="cap"><span class="pip"></span><b>' + esc(label) + '</b>' +
+           '<span class="spacer"></span>' + st.done + '/' + st.total + '</div>' +
+           nodes + '</div>';
+  }).join("");
+
+  const up = d.up_next.length
+    ? '<div class="upnext"><b>UNLOCKED NOW \u2014 ' + d.up_next.length + ' TOPIC' +
+      (d.up_next.length === 1 ? "" : "S") + '</b>' +
+      d.up_next.map(esc).join(" \u00b7 ") + '</div>'
+    : '<div class="upnext"><b>STAGE COMPLETE</b>Every topic in the current stage is written.</div>';
+
+  $("path").innerHTML =
+    '<div class="pathwrap">' +
+      '<div class="pathhead"><span>' + d.done + '/' + d.total + ' TOPICS</span>' +
+      '<span class="meter"><i></i></span><span>' + d.pct + '%</span></div>' +
+      '<div class="lanes">' + lanes + '</div>' + up +
+    '</div>';
+
+  // Fill the meter after paint so the width animates up from zero.
+  requestAnimationFrame(() => {
+    const bar = $("path").querySelector(".meter i");
+    if (bar) bar.style.width = d.pct + "%";
+  });
+
+  $("path").querySelectorAll(".tnode[data-slug]").forEach(el =>
+    el.addEventListener("click", () => openNote(el.dataset.slug)));
+}
+
+/* ---------- the agent console --------------------------------------
+   Every agent declares itself in automation/registry.py; this panel is a
+   view of that list plus the audit log, so a new agent appears here with
+   no frontend change at all.                                            */
+async function renderAgents(){
+  let d;
+  try{ d = await api("/api/agents"); }
+  catch{ $("agents").innerHTML = `<div class="err">Cannot reach the backend.</div>`; return; }
+
+  $("agentCount").textContent = d.agents.length + " registered";
+  $("agents").innerHTML = d.agents.map((a, i) => {
+    const tags = [
+      a.network ? `<span class="tagx net">NETWORK</span>` : "",
+      a.slow ? `<span class="tagx slow">SLOW</span>` : "",
+      a.writes ? "" : `<span class="tagx">READ ONLY</span>`,
+    ].join("");
+    const last = a.last
+      ? `<span>last run <b>${esc(a.last.when.slice(0, 16))}</b></span>
+         <span>${esc(a.last.summary)}</span>`
+      : `<span>never run</span>`;
+    return `<div class="agent" style="animation:riseIn .35s both ${i * 45}ms">
+      <div>
+        <div class="top"><span class="nm">${esc(a.label)}</span>${tags}</div>
+        <div class="bl">${esc(a.blurb)}</div>
+        <div class="meta"><span>${esc(a.schedule)}</span>${last}</div>
+      </div>
+      <button class="run" data-agent="${esc(a.name)}">RUN</button>
+    </div>`;
+  }).join("");
+
+  $("agents").querySelectorAll(".run").forEach(b =>
+    b.addEventListener("click", () => runAgent(b)));
+}
+
+async function runAgent(btn){
+  const name = btn.dataset.agent, label = btn.textContent;
+  btn.disabled = true; btn.textContent = "RUNNING";
+  activity("AGENT · " + name.toUpperCase() + " · DRY RUN", true);
+  try{
+    const r = await api(`/api/agents/${name}/run`, {method: "POST"});
+    $("mTitle").textContent = `${name} — dry run — ${r.seconds}s`;
+    $("mBody").textContent = r.output || "(no output)";
+    $("veil").classList.add("on");
+    activity(`AGENT · ${name.toUpperCase()} · ${r.ok ? "OK" : "EXIT NONZERO"} · ${r.seconds}s`, false);
+    renderAgents();
+  renderPath();            // last-run line will have moved
+  }catch(e){
+    $("mTitle").textContent = name + " — could not run";
+    $("mBody").textContent = e.message;
+    $("veil").classList.add("on");
+    activity("AGENT · " + name.toUpperCase() + " · FAILED", false);
+  }finally{
+    btn.disabled = false; btn.textContent = label;
+  }
+}
+
+/* ---------- the live system rail: every row is real state ---------- */
+function row(k, v, state, status){
+  return `<div class="row ${state}"><span class="k">${esc(k)}</span>` +
+         `<span class="v">${esc(v)}</span>` +
+         `<span class="s"><i></i>${esc(status)}</span></div>`;
+}
+
+async function renderSystem(){
+  let d;
+  try{ d = await api("/api/system"); }
+  catch{
+    $("rail").innerHTML = row("BACKEND", "not reachable", "bad", "DOWN");
+    return;
+  }
+  $("clock").textContent = d.now;
+
+  const task = (name, label) => {
+    const t = d.tasks[name];
+    return t ? row(label, `${t.summary} · ${t.mode.toLowerCase()}`, "ok", "RAN")
+             : row(label, "never run", "", "IDLE");
+  };
+
+  $("rail").innerHTML = [
+    row("PROVIDER", `${d.provider} · ${d.model}`, d.ready ? "ok" : "bad",
+        d.ready ? "LIVE" : "OFF"),
+    row("VAULT", `${d.vault} · ${d.notes} notes · ${d.domains} domains`, "ok", "READ"),
+    row("GRAPH", `${d.edges} links · ${d.orphans} unlinked`, "ok", "OK"),
+    row("BROKEN", d.broken ? `${d.broken} link${d.broken === 1 ? "" : "s"} to nothing` : "none",
+        d.broken ? "warn" : "ok", d.broken ? "FLAG" : "OK"),
+    row("RETRIEVAL", d.retrieval, "ok", "READY"),
+    task("organize", "ORGANISE"),
+    task("digest", "DIGEST"),
+    task("conflicts", "CONFLICTS"),
+    row("UPTIME", d.uptime, "ok", "UP"),
+  ].join("");
+}
+
+function activity(text, live){
+  const el = $("activity");
+  el.classList.toggle("live", !!live);
+  el.querySelector("span").textContent = text;
+}
+
 /* ---------- FR7: the orbit, which actually orbits ---------- */
 function renderOrbit(s){
   const CX = 280, CY = 215, svg = $("orbit");
@@ -525,17 +885,17 @@ function renderOrbit(s){
   })(last);
 }
 
-/* ---------- FR4: the link graph ---------- */
 let graphFrame = null;
 
-/* ---------- FR4: the link graph, settling on screen ---------- */
+/* ---------- FR4: the knowledge graph ----------------------------------
+   Curved, glowing, and settling on screen. Every filament is a real
+   [[wikilink]] between two real notes - nothing here is decoration.        */
 function renderGraph(g){
   const W = 560, H = 440, svg = $("graph");
   cancelAnimationFrame(graphFrame);
   if (!g.nodes.length){ svg.innerHTML = ""; return; }
 
-  // Seeded from the slug, so the same vault always settles into the same
-  // picture - a graph that lands somewhere new on every reload is unreadable.
+  // Seeded from the slug, so the same vault always settles the same way.
   const idx = {}, P = g.nodes.map((n, i) => {
     idx[n.slug] = i;
     let seed = 0;
@@ -544,50 +904,93 @@ function renderGraph(g){
     return {x: W / 2 + r * Math.cos(a), y: H / 2 + r * Math.sin(a) * 0.8};
   });
   const links = g.edges
-    .map(e => [idx[e.source], idx[e.target]])
+    .map(e => [idx[e.source], idx[e.target], e.source])
     .filter(([a, b]) => a !== undefined && b !== undefined);
 
-  svg.innerHTML = `<g id="gEdges"></g><g id="gBroken"></g><g id="gNodes"></g>`;
-  const edgeLayer = svg.querySelector("#gEdges");
-  const brokenLayer = svg.querySelector("#gBroken");
-  const nodeLayer = svg.querySelector("#gNodes");
+  svg.innerHTML = `<g id="gGlow"></g><g id="gEdges"></g><g id="gBroken"></g>
+                   <g id="gDust"></g><g id="gNodes"></g>`;
+  const glowL = svg.querySelector("#gGlow"), edgeL = svg.querySelector("#gEdges");
+  const brokenL = svg.querySelector("#gBroken"), dustL = svg.querySelector("#gDust");
+  const nodeL = svg.querySelector("#gNodes");
 
-  const edgeEls = links.map(([a, b]) => {
-    const el = svgEl("line", {class: "edge"});
-    edgeLayer.appendChild(el);
-    return {el, a, b};
+  const domainOf = {};
+  g.nodes.forEach(n => domainOf[n.slug] = n.domain);
+
+  // Two strokes per edge: a wide faint one for the glow, a thin bright one
+  // for the line itself. Cheaper than an SVG blur filter and it survives on
+  // an integrated GPU, which matters on the machine this demos from.
+  const edgeEls = links.map(([a, b, src]) => {
+    const c = colorOf[domainOf[src]] || "#5fc9bf";
+    // One neutral tone for every link. Colouring them by domain turned the
+    // picture into wiring; the nodes carry the colour, the links carry shape.
+    const glow = svgEl("path", {class: "e-glow", stroke: "#4a6480",
+                                "stroke-width": 3, "stroke-opacity": ".05"});
+    const core = svgEl("path", {class: "e-core", stroke: "#5b7796",
+                                "stroke-width": .9, "stroke-opacity": ".30"});
+    glowL.appendChild(glow); edgeL.appendChild(core);
+    return {glow, core, a, b, c};
   });
 
-  // A broken link points at a note that does not exist, so it gets a dashed
-  // stub to an empty circle - a line going nowhere, which is what it is.
   const brokenEls = g.broken.map((b, k) => {
     const i = idx[b.source];
     if (i === undefined) return null;
     const angle = (k / Math.max(g.broken.length, 1)) * Math.PI * 2;
     const line = svgEl("line", {class: "edge broken"});
     const dot = svgEl("circle", {class: "ghost", r: 6});
-    dot.innerHTML = `<title>broken: ${esc(b.target)}</title>`;
-    brokenLayer.appendChild(line);
-    brokenLayer.appendChild(dot);
+    dot.innerHTML = `<title>broken link: ${esc(b.target)}</title>`;
+    brokenL.appendChild(line); brokenL.appendChild(dot);
     return {line, dot, i, angle};
   }).filter(Boolean);
 
   const nodeEls = g.nodes.map((n, i) => {
-    const c = colorOf[n.domain] || "#4fd1c5";
-    const r = 5 + Math.min(n.degree, 8) * 1.5;
+    const c = colorOf[n.domain] || "#35e0d4";
+    const r = 4 + Math.min(n.degree, 9) * 1.4;
     const el = svgEl("g", {class: "gnode"});
     el.dataset.slug = n.slug;
+    // Labels only for the hubs; the rest appear on hover, or the picture
+    // turns into a wall of text at 54 notes.
+    const quiet = n.degree < 4 ? " quiet" : "";
     el.innerHTML =
-      `<circle class="gn-c" r="${r}" fill="${c}" fill-opacity=".3" stroke="${c}" stroke-width="1.5"/>
-       <text class="gn-t" y="${-r - 5}" text-anchor="middle">${esc(n.title.slice(0, 22))}</text>
-       <title>${esc(n.title)} — ${n.degree} connection${n.degree === 1 ? "" : "s"}</title>`;
+      `<circle class="n-halo" r="${r * 2.1}" fill="${c}" fill-opacity=".05"/>
+       <circle class="gn-c" r="${r}" fill="${c}" fill-opacity=".38"
+               stroke="${c}" stroke-width="1.1"/>
+       <text class="gn-t${quiet}" y="${-r - 6}" text-anchor="middle"
+             >${esc(n.title.slice(0, 24))}</text>
+       <title>${esc(n.title)} — ${n.domain} — ${n.degree} connection${n.degree === 1 ? "" : "s"}</title>`;
     el.addEventListener("click", () => openNote(n.slug));
-    nodeLayer.appendChild(el);
+    nodeL.appendChild(el);
     return {el, i, domain: n.domain};
   });
 
+  // Light travelling along a sample of the links. Capped so the effect reads
+  // as activity rather than noise, and so the frame cost stays flat.
+  // Particles were the one element borrowed straight from the sci-fi mockup.
+  // A knowledge graph reads calmer without them; set DUST above 0 to restore.
+  const DUST = 0;
+  const dust = [];
+  const stride = Math.max(1, Math.floor(edgeEls.length / Math.max(DUST, 1)));
+  for (let i = 0; DUST && i < edgeEls.length; i += stride){
+    const e = edgeEls[i];
+    const c = svgEl("circle", {class: "particle", r: 1.6, fill: "#8fb0c9", "fill-opacity": ".7"});
+    dustL.appendChild(c);
+    dust.push({el: c, e, t: Math.random(), speed: 0.09 + Math.random() * 0.1});
+  }
+
+  // Control point pushed off the midpoint, which is what bends a straight
+  // line into the organic filament the reference images are full of.
+  const curve = (p0, p1) => {
+    const mx = (p0.x + p1.x) / 2, my = (p0.y + p1.y) / 2;
+    const dx = p1.x - p0.x, dy = p1.y - p0.y;
+    return {cx: mx - dy * 0.10, cy: my + dx * 0.10};
+  };
+  const at = (p0, c, p1, t) => {
+    const u = 1 - t;
+    return {x: u * u * p0.x + 2 * u * t * c.cx + t * t * p1.x,
+            y: u * u * p0.y + 2 * u * t * c.cy + t * t * p1.y};
+  };
+
   function relax(){
-    for (let i = 0; i < P.length; i++){          // every node repels every other
+    for (let i = 0; i < P.length; i++){
       for (let j = i + 1; j < P.length; j++){
         let dx = P[j].x - P[i].x, dy = P[j].y - P[i].y;
         const d2 = dx * dx + dy * dy || 0.01;
@@ -597,66 +1000,84 @@ function renderGraph(g){
         P[i].x -= dx; P[i].y -= dy; P[j].x += dx; P[j].y += dy;
       }
     }
-    for (const [a, b] of links){                 // linked nodes pull together
+    for (const [a, b] of links){
       const dx = P[b].x - P[a].x, dy = P[b].y - P[a].y;
       const d = Math.hypot(dx, dy) || 0.01, f = (d - 95) * 0.012;
       P[a].x += dx / d * f; P[a].y += dy / d * f;
       P[b].x -= dx / d * f; P[b].y -= dy / d * f;
     }
-    for (const q of P){                          // gentle pull to the centre
+    for (const q of P){
       q.x += (W / 2 - q.x) * 0.008; q.y += (H / 2 - q.y) * 0.008;
       q.x = Math.max(40, Math.min(W - 40, q.x));
       q.y = Math.max(26, Math.min(H - 26, q.y));
     }
   }
 
-  function draw(){
+  function drawStructure(){
     for (const e of edgeEls){
-      e.el.setAttribute("x1", P[e.a].x.toFixed(1));
-      e.el.setAttribute("y1", P[e.a].y.toFixed(1));
-      e.el.setAttribute("x2", P[e.b].x.toFixed(1));
-      e.el.setAttribute("y2", P[e.b].y.toFixed(1));
+      const p0 = P[e.a], p1 = P[e.b], c = curve(p0, p1);
+      e.ctrl = c;
+      const d = `M${p0.x.toFixed(1)},${p0.y.toFixed(1)} ` +
+                `Q${c.cx.toFixed(1)},${c.cy.toFixed(1)} ${p1.x.toFixed(1)},${p1.y.toFixed(1)}`;
+      e.glow.setAttribute("d", d); e.core.setAttribute("d", d);
     }
     for (const b of brokenEls){
-      const x = P[b.i].x + 44 * Math.cos(b.angle);
-      const y = P[b.i].y + 44 * Math.sin(b.angle);
+      const x = P[b.i].x + 42 * Math.cos(b.angle), y = P[b.i].y + 42 * Math.sin(b.angle);
       b.line.setAttribute("x1", P[b.i].x.toFixed(1));
       b.line.setAttribute("y1", P[b.i].y.toFixed(1));
-      b.line.setAttribute("x2", x.toFixed(1));
-      b.line.setAttribute("y2", y.toFixed(1));
-      b.dot.setAttribute("cx", x.toFixed(1));
-      b.dot.setAttribute("cy", y.toFixed(1));
+      b.line.setAttribute("x2", x.toFixed(1)); b.line.setAttribute("y2", y.toFixed(1));
+      b.dot.setAttribute("cx", x.toFixed(1)); b.dot.setAttribute("cy", y.toFixed(1));
     }
     for (const n of nodeEls){
       n.el.setAttribute("transform",
         `translate(${P[n.i].x.toFixed(1)},${P[n.i].y.toFixed(1)})`);
-      n.el.setAttribute("opacity", FILTER && FILTER !== n.domain ? ".25" : "1");
+      n.el.setAttribute("opacity", FILTER && FILTER !== n.domain ? ".16" : "1");
     }
   }
 
-  // Settle on screen rather than arriving pre-solved: the layout is a physics
-  // simulation, and watching it resolve is the clearest way to show that.
-  const TOTAL = 260;
-  let done = 0;
+  function drawDust(dt){
+    for (const d of dust){
+      d.t += d.speed * dt;
+      if (d.t > 1) d.t -= 1;
+      const p = at(P[d.e.a], d.e.ctrl || curve(P[d.e.a], P[d.e.b]), P[d.e.b], d.t);
+      d.el.setAttribute("cx", p.x.toFixed(1));
+      d.el.setAttribute("cy", p.y.toFixed(1));
+      d.el.setAttribute("fill-opacity", (0.85 * Math.sin(d.t * Math.PI)).toFixed(2));
+    }
+  }
+
   if (REDUCED){
-    while (done++ < TOTAL) relax();
-    draw();
+    for (let k = 0; k < 260; k++) relax();
+    drawStructure();
+    dust.forEach(d => d.el.remove());
     return;
   }
-  (function tick(){
-    for (let k = 0; k < 5 && done < TOTAL; k++, done++) relax();
-    draw();
-    if (done < TOTAL) graphFrame = requestAnimationFrame(tick);
-  })();
+
+  // Settle on screen rather than arriving pre-solved - watching the physics
+  // resolve is the clearest way to show the layout is computed, not stored.
+  let done = 0, last = performance.now();
+  (function tick(now){
+    const dt = Math.min(((now || last) - last) / 1000, 0.1); last = now || last;
+    if (!document.hidden){
+      if (done < 260){
+        for (let k = 0; k < 5 && done < 260; k++, done++) relax();
+        drawStructure();
+      }
+      drawDust(dt);
+    }
+    graphFrame = requestAnimationFrame(tick);
+  })(last);
 }
 
 document.querySelectorAll(".tab").forEach(tab => tab.addEventListener("click", () => {
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t === tab));
   const view = tab.dataset.view;
-  $("view-orbit").classList.toggle("on", view === "orbit");
-  $("view-graph").classList.toggle("on", view === "graph");
-  $("viewTitle").textContent = view === "orbit" ? "Knowledge Orbit" : "Link Graph";
+  ["path","orbit","graph"].forEach(v =>
+    $("view-" + v).classList.toggle("on", view === v));
+  $("viewTitle").textContent =
+    {path:"Learning Path", orbit:"Knowledge Orbit", graph:"Knowledge Graph"}[view];
   if (view === "graph" && GRAPH) renderGraph(GRAPH);
+  if (view === "path") renderPath();
 }));
 
 /* ---------- FR2 + FR8: note list, search, and filtering ---------- */
@@ -737,6 +1158,7 @@ async function ask(){
   thread.appendChild(turn);
   thread.scrollTop = thread.scrollHeight;
   $("q").value = ""; $("send").disabled = true;
+  activity("SEARCHING VAULT · " + NOTES.length + " NOTES", true);
 
   try{
     const r = await api("/api/ask", {
@@ -752,8 +1174,10 @@ async function ask(){
     typeOut(turn.querySelector(".answer"), r.answer, () => thread.scrollTop = thread.scrollHeight);
     turn.querySelectorAll(".src").forEach(el =>
       el.addEventListener("click", () => openNote(el.dataset.slug)));
+    activity(`ANSWERED · ${r.sources.length} SOURCE${r.sources.length === 1 ? "" : "S"} · ${esc(r.model)}`, false);
   }catch(e){
     turn.innerHTML = `<div class="you">${esc(question)}</div><div class="err">${esc(e.message)}</div>`;
+    activity("ERROR · SEE THREAD", false);
   }finally{
     $("send").disabled = false;
     thread.scrollTop = thread.scrollHeight;
@@ -778,6 +1202,8 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") $("veil").cl
 /* ---------- boot ---------- */
 async function boot(){
   startSky();
+  renderSystem(); setInterval(renderSystem, 5000);
+  renderAgents();
   await loadHealth();
   try{
     // Three independent reads, so fetch them together rather than in sequence.
@@ -793,6 +1219,7 @@ async function boot(){
       return;
     }
     renderStats(STATS); renderOrbit(STATS); renderNotes();
+    renderGraph(GRAPH);        // the graph is the view that opens
   }catch(e){
     $("notes").innerHTML = `<div class="err">Cannot reach the backend (${esc(e.message)}).<br><br>
       Start it with:<br><code>python -m uvicorn app:app --app-dir backend</code></div>`;
@@ -807,11 +1234,12 @@ setInterval(async () => {
   try{
     const s = await api("/api/stats");
     if (JSON.stringify(s) === JSON.stringify(STATS)) return;   // nothing changed
-    STATS = s;
+    STATS = s; PATH = null;
     NOTES = (await api("/api/notes")).notes;
     GRAPH = await api("/api/graph");
     renderStats(STATS); renderOrbit(STATS); renderNotes();
     if ($("view-graph").classList.contains("on")) renderGraph(GRAPH);
+    if ($("view-path").classList.contains("on")) renderPath();
     // Visible tell that the vault changed on disk and the page noticed.
     const row = $("stats");
     row.classList.remove("fresh"); void row.offsetWidth; row.classList.add("fresh");

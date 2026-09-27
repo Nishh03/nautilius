@@ -7,6 +7,8 @@ December 2026. The part that actually gets people hired right now.
 - [[Vector Embeddings and Similarity]]
 - [[Retrieval-Augmented Generation]] → [[Project 3 - RAG Assistant]]
 - [[Agents and Tool Use]]
+- [[Function Calling and Structured Output]]
+- [[Context Engineering]]
 - [[Evaluating LLM Outputs]] — the skill nobody advertises and everybody needs
 
 For giving a model domain knowledge, fine-tuning is the default approach and

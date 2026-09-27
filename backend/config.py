@@ -27,6 +27,13 @@ GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
+
+# Batch agents can override the interactive provider. A local model has no
+# per-minute cap, which matters far more for a nightly sweep than speed does.
+AGENT_PROVIDER = os.getenv("AGENT_PROVIDER", "").lower()
+
 # --- Retrieval -------------------------------------------------------------
 TOP_K = int(os.getenv("TOP_K", "5"))          # notes sent to the LLM per question
 MAX_NOTE_CHARS = int(os.getenv("MAX_NOTE_CHARS", "4000"))  # truncate huge notes

@@ -11,6 +11,9 @@ whole difference.
 - [[Experiment Tracking]]
 - [[Model Monitoring]]
 - [[Cloud Free Tiers]] — deploy everything without paying
+- [[CI for Machine Learning]]
+- [[Vector Databases in Production]]
+- [[Cost and Latency Budgets]]
 
 Goal: every project from Months 2-4 gets containerised and given a live URL.
 
