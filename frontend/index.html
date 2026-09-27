@@ -172,9 +172,76 @@
     font:13.5px/1.65 "Cascadia Code",Consolas,monospace; color:#cfe0f5;
   }
   .x{background:none; color:var(--muted); font-size:20px; padding:0 6px; line-height:1}
+
+  /* ===== motion ===================================================== */
+  #sky{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    width:100vw; height:100vh;
+  }
+  header, main, .veil{position:relative; z-index:1}
+
+  @keyframes riseIn{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none}}
+  @keyframes popIn{from{opacity:0; transform:scale(.88)} to{opacity:1; transform:none}}
+  @keyframes corePulse{
+    0%,100%{opacity:.18; transform:scale(1)}
+    50%{opacity:.05; transform:scale(1.13)}
+  }
+  @keyframes blink{0%,80%,100%{opacity:.25} 40%{opacity:1}}
+  @keyframes sweep{to{transform:translateX(220%)}}
+
+  .card{animation:riseIn .45s cubic-bezier(.2,.7,.3,1) both}
+  .note{animation:riseIn .32s cubic-bezier(.2,.7,.3,1) both}
+  .turn{animation:riseIn .4s cubic-bezier(.2,.7,.3,1) both}
+  .src{animation:popIn .3s cubic-bezier(.2,.9,.3,1) both}
+
+  .card{transition:transform .2s, border-color .2s}
+  .card:hover{transform:translateY(-3px); border-color:#2d4260}
+  .panel{transition:border-color .25s}
+  .note{transition:background .15s, padding-left .15s}
+  .note:hover{padding-left:24px}
+
+  /* orbit bodies */
+  .orb{transition:opacity .35s}
+  .orb-c{transition:stroke-width .2s, fill-opacity .2s}
+  .orb:hover .orb-c{stroke-width:3; fill-opacity:.32}
+  .core-halo{fill:#4fd1c5; animation:corePulse 4.5s ease-in-out infinite}
+
+  /* graph */
+  .gn-c{transition:stroke-width .15s, fill-opacity .15s}
+  .gnode:hover .gn-c{stroke-width:3; fill-opacity:.55}
+
+  /* thinking indicator */
+  .dots{display:inline-flex; gap:5px; align-items:center; margin-left:2px}
+  .dots i{
+    width:5px; height:5px; border-radius:50%; background:var(--accent,#4fd1c5);
+    display:block; animation:blink 1.25s infinite;
+  }
+  .dots i:nth-child(2){animation-delay:.18s}
+  .dots i:nth-child(3){animation-delay:.36s}
+
+  /* a caret while the answer is being revealed */
+  .answer.typing::after{
+    content:""; display:inline-block; width:2px; height:1em;
+    background:#4fd1c5; margin-left:2px; vertical-align:-2px;
+    animation:blink .9s steps(1) infinite;
+  }
+
+  /* the live-refresh tell: stat row glints when the vault changed on disk */
+  .stats.fresh{position:relative; overflow:hidden}
+  .stats.fresh::after{
+    content:""; position:absolute; inset:0 auto 0 -60%; width:45%;
+    background:linear-gradient(90deg,transparent,rgba(79,209,197,.13),transparent);
+    animation:sweep 1s ease-out; pointer-events:none;
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    *,*::after{animation:none !important; transition:none !important}
+  }
 </style>
 </head>
 <body>
+
+<canvas id="sky" aria-hidden="true"></canvas>
 
 <header>
   <div class="logo">
@@ -258,6 +325,77 @@ const colorOf = {};
 let STATS = null, NOTES = [], GRAPH = null, FILTER = null;
 
 const $ = id => document.getElementById(id);
+
+// Motion is opt-out: a viewer who asked for less gets a still page.
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SVGNS = "http://www.w3.org/2000/svg";
+const svgEl = (tag, attrs) => {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+};
+
+/* ---------- ambient starfield behind everything ---------- */
+function startSky(){
+  const c = $("sky"), ctx = c.getContext("2d");
+  let w = 0, h = 0, stars = [];
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+
+  function size(){
+    w = c.width = innerWidth * dpr;
+    h = c.height = innerHeight * dpr;
+    const n = Math.min(150, Math.round(innerWidth * innerHeight / 15000));
+    stars = Array.from({length: n}, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: (Math.random() * 1.2 + .3) * dpr,
+      a: Math.random() * .45 + .12,
+      drift: (Math.random() * .05 + .015) * dpr,
+      phase: Math.random() * 6.283,
+      rate: Math.random() * .02 + .005,
+    }));
+  }
+
+  function paint(){
+    ctx.clearRect(0, 0, w, h);
+    for (const st of stars){
+      ctx.globalAlpha = Math.max(0, st.a + Math.sin(st.phase) * .11);
+      ctx.beginPath();
+      ctx.arc(st.x, st.y, st.r, 0, 6.283);
+      ctx.fillStyle = "#a6dcff";
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  size();
+  addEventListener("resize", () => { size(); paint(); });
+
+  if (REDUCED){ paint(); return; }          // still field, no loop
+  (function frame(){
+    if (!document.hidden){
+      for (const st of stars){
+        st.y += st.drift;
+        if (st.y > h) st.y = 0;
+        st.phase += st.rate;
+      }
+      paint();
+    }
+    requestAnimationFrame(frame);
+  })();
+}
+
+/* ---------- numbers count up rather than snapping ---------- */
+function countUp(el, to){
+  if (REDUCED || !to){ el.textContent = to.toLocaleString(); return; }
+  const dur = 700, t0 = performance.now();
+  (function step(now){
+    const p = Math.min((now - t0) / dur, 1);
+    el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))).toLocaleString();
+    if (p < 1) requestAnimationFrame(step);
+  })(t0);
+}
+
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 // Models return light markdown. Escape first, then re-introduce only bold,
@@ -304,119 +442,212 @@ function renderStats(s){
     ["Links", s.links, false],
     ["Broken links", s.broken_links, s.broken_links > 0],
     ["Unlinked", s.orphans, false],
-    ["Words", s.words.toLocaleString(), false],
+    ["Words", s.words, false],
   ];
-  $("stats").innerHTML = cards.map(([l,n,alert]) =>
-    `<div class="card${alert?" alert":""}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+  $("stats").innerHTML = cards.map(([l, n, alert], i) =>
+    `<div class="card${alert ? " alert" : ""}" style="animation-delay:${i * 55}ms">
+       <div class="n">0</div><div class="l">${l}</div></div>`).join("");
+  // Count up to the real figure once the card has arrived.
+  $("stats").querySelectorAll(".card .n").forEach((el, i) => countUp(el, cards[i][1]));
 }
 
 /* ---------- FR7: the orbit ---------- */
+let orbitFrame = null, ORBS = [];
+
+/* ---------- FR7: the orbit, which actually orbits ---------- */
 function renderOrbit(s){
   const CX = 280, CY = 215, svg = $("orbit");
   const domains = s.domains;
+  cancelAnimationFrame(orbitFrame);
+  if (!domains.length){ svg.innerHTML = ""; ORBS = []; return; }
+
   const max = Math.max(...domains.map(d => d.count), 1);
-  // Two rings so a busy vault stays readable.
   const rings = domains.length > 5 ? [155, 100] : [150];
-  let out = rings.map(r => `<circle class="ring" cx="${CX}" cy="${CY}" r="${r}"/>`).join("");
 
-  out += `<circle cx="${CX}" cy="${CY}" r="62" fill="#0e1524" stroke="#4fd1c5" stroke-opacity=".5"/>
-          <text class="core-n" x="${CX}" y="${CY+4}" text-anchor="middle">${s.total}</text>
-          <text class="core-l" x="${CX}" y="${CY+24}" text-anchor="middle">NOTES</text>`;
+  // Static furniture: the rings and the core, drawn once.
+  svg.innerHTML =
+    rings.map(r => `<circle class="ring" cx="${CX}" cy="${CY}" r="${r}"/>`).join("") +
+    `<circle class="core-halo" cx="${CX}" cy="${CY}" r="62"/>
+     <circle cx="${CX}" cy="${CY}" r="62" fill="#0e1524" stroke="#4fd1c5" stroke-opacity=".5"/>
+     <text class="core-n" x="${CX}" y="${CY + 4}" text-anchor="middle">${s.total}</text>
+     <text class="core-l" x="${CX}" y="${CY + 24}" text-anchor="middle">NOTES</text>
+     <g id="orbLines"></g><g id="orbBodies"></g>`;
 
-  domains.forEach((d, i) => {
+  const lineLayer = svg.querySelector("#orbLines");
+  const bodyLayer = svg.querySelector("#orbBodies");
+
+  ORBS = domains.map((d, i) => {
     const ring = rings[i % rings.length];
     const perRing = Math.ceil(domains.length / rings.length);
     const idxInRing = Math.floor(i / rings.length);
-    const angle = (idxInRing / perRing) * Math.PI * 2 - Math.PI / 2 + (i % rings.length) * 0.42;
-    const x = CX + ring * Math.cos(angle), y = CY + ring * Math.sin(angle) * 0.86;
+    const angle = (idxInRing / perRing) * Math.PI * 2 - Math.PI / 2
+                  + (i % rings.length) * 0.42;
     const r = 20 + 26 * Math.sqrt(d.count / max);   // area, not radius, tracks the count
     const c = PALETTE[i % PALETTE.length];
     colorOf[d.domain] = c;
-    const faded = FILTER && FILTER !== d.domain ? " faded" : "";
-    out += `
-      <g class="orb${faded}" data-domain="${esc(d.domain)}">
-        <line x1="${CX}" y1="${CY}" x2="${x}" y2="${y}" stroke="${c}" stroke-opacity=".22"/>
-        <circle class="orb-c" cx="${x}" cy="${y}" r="${r}" fill="${c}" fill-opacity=".16" stroke="${c}" stroke-width="1.5"/>
-        <text class="orb-label" x="${x}" y="${y+4}" text-anchor="middle">${esc(d.domain)}</text>
-        <text class="orb-count" x="${x}" y="${y + r + 15}" text-anchor="middle">${d.count}</text>
-      </g>`;
-  });
-  svg.innerHTML = out;
 
-  // FR8: one tap from overview to conversation.
-  svg.querySelectorAll(".orb").forEach(g =>
-    g.addEventListener("click", () => selectDomain(g.dataset.domain)));
+    const line = svgEl("line", {x1: CX, y1: CY, stroke: c, "stroke-opacity": ".22"});
+    lineLayer.appendChild(line);
+
+    const g = svgEl("g", {class: "orb"});
+    g.dataset.domain = d.domain;
+    g.innerHTML =
+      `<circle class="orb-c" r="${r}" fill="${c}" fill-opacity=".16" stroke="${c}" stroke-width="1.5"/>
+       <text class="orb-label" y="4" text-anchor="middle">${esc(d.domain)}</text>
+       <text class="orb-count" y="${r + 15}" text-anchor="middle">${d.count}</text>
+       <title>${esc(d.domain)} — ${d.count} note${d.count === 1 ? "" : "s"}</title>`;
+    g.addEventListener("click", () => selectDomain(d.domain));
+    bodyLayer.appendChild(g);
+
+    // Inner orbits sweep faster than outer ones, as real ones do.
+    return {domain: d.domain, g, line, ring, angle,
+            speed: 0.14 / Math.sqrt(ring / 100)};
+  });
+
+  let last = performance.now();
+  (function step(now){
+    const dt = Math.min((now - last) / 1000, 0.1);
+    last = now;
+    const live = !REDUCED && !document.hidden
+                 && $("view-orbit").classList.contains("on");
+    for (const o of ORBS){
+      if (live) o.angle += o.speed * dt;
+      const x = CX + o.ring * Math.cos(o.angle);
+      const y = CY + o.ring * Math.sin(o.angle) * 0.86;
+      o.g.setAttribute("transform", `translate(${x.toFixed(2)},${y.toFixed(2)})`);
+      o.line.setAttribute("x2", x.toFixed(2));
+      o.line.setAttribute("y2", y.toFixed(2));
+      // Fading is driven from FILTER here, so selecting a domain never has to
+      // rebuild the orbit and restart every body from its starting angle.
+      o.g.classList.toggle("faded", !!(FILTER && FILTER !== o.domain));
+    }
+    orbitFrame = requestAnimationFrame(step);
+  })(last);
 }
 
 /* ---------- FR4: the link graph ---------- */
+let graphFrame = null;
+
+/* ---------- FR4: the link graph, settling on screen ---------- */
 function renderGraph(g){
   const W = 560, H = 440, svg = $("graph");
+  cancelAnimationFrame(graphFrame);
   if (!g.nodes.length){ svg.innerHTML = ""; return; }
 
-  // Tiny deterministic force layout. Seeded from the slug so the picture is the
-  // same on every reload - a graph that jumps around each refresh is unreadable.
+  // Seeded from the slug, so the same vault always settles into the same
+  // picture - a graph that lands somewhere new on every reload is unreadable.
   const idx = {}, P = g.nodes.map((n, i) => {
     idx[n.slug] = i;
     let seed = 0;
     for (const ch of n.slug) seed = (seed * 31 + ch.charCodeAt(0)) % 9973;
     const a = (seed / 9973) * Math.PI * 2, r = 60 + (seed % 110);
-    return {x: W/2 + r*Math.cos(a), y: H/2 + r*Math.sin(a)*0.8};
+    return {x: W / 2 + r * Math.cos(a), y: H / 2 + r * Math.sin(a) * 0.8};
   });
   const links = g.edges
     .map(e => [idx[e.source], idx[e.target]])
     .filter(([a, b]) => a !== undefined && b !== undefined);
 
-  for (let step = 0; step < 260; step++){
+  svg.innerHTML = `<g id="gEdges"></g><g id="gBroken"></g><g id="gNodes"></g>`;
+  const edgeLayer = svg.querySelector("#gEdges");
+  const brokenLayer = svg.querySelector("#gBroken");
+  const nodeLayer = svg.querySelector("#gNodes");
+
+  const edgeEls = links.map(([a, b]) => {
+    const el = svgEl("line", {class: "edge"});
+    edgeLayer.appendChild(el);
+    return {el, a, b};
+  });
+
+  // A broken link points at a note that does not exist, so it gets a dashed
+  // stub to an empty circle - a line going nowhere, which is what it is.
+  const brokenEls = g.broken.map((b, k) => {
+    const i = idx[b.source];
+    if (i === undefined) return null;
+    const angle = (k / Math.max(g.broken.length, 1)) * Math.PI * 2;
+    const line = svgEl("line", {class: "edge broken"});
+    const dot = svgEl("circle", {class: "ghost", r: 6});
+    dot.innerHTML = `<title>broken: ${esc(b.target)}</title>`;
+    brokenLayer.appendChild(line);
+    brokenLayer.appendChild(dot);
+    return {line, dot, i, angle};
+  }).filter(Boolean);
+
+  const nodeEls = g.nodes.map((n, i) => {
+    const c = colorOf[n.domain] || "#4fd1c5";
+    const r = 5 + Math.min(n.degree, 8) * 1.5;
+    const el = svgEl("g", {class: "gnode"});
+    el.dataset.slug = n.slug;
+    el.innerHTML =
+      `<circle class="gn-c" r="${r}" fill="${c}" fill-opacity=".3" stroke="${c}" stroke-width="1.5"/>
+       <text class="gn-t" y="${-r - 5}" text-anchor="middle">${esc(n.title.slice(0, 22))}</text>
+       <title>${esc(n.title)} — ${n.degree} connection${n.degree === 1 ? "" : "s"}</title>`;
+    el.addEventListener("click", () => openNote(n.slug));
+    nodeLayer.appendChild(el);
+    return {el, i, domain: n.domain};
+  });
+
+  function relax(){
     for (let i = 0; i < P.length; i++){          // every node repels every other
       for (let j = i + 1; j < P.length; j++){
         let dx = P[j].x - P[i].x, dy = P[j].y - P[i].y;
-        let d2 = dx*dx + dy*dy || 0.01;
+        const d2 = dx * dx + dy * dy || 0.01;
         if (d2 > 34000) continue;
         const f = 1400 / d2, d = Math.sqrt(d2);
-        dx = dx/d*f; dy = dy/d*f;
+        dx = dx / d * f; dy = dy / d * f;
         P[i].x -= dx; P[i].y -= dy; P[j].x += dx; P[j].y += dy;
       }
     }
     for (const [a, b] of links){                 // linked nodes pull together
       const dx = P[b].x - P[a].x, dy = P[b].y - P[a].y;
       const d = Math.hypot(dx, dy) || 0.01, f = (d - 95) * 0.012;
-      P[a].x += dx/d*f; P[a].y += dy/d*f; P[b].x -= dx/d*f; P[b].y -= dy/d*f;
+      P[a].x += dx / d * f; P[a].y += dy / d * f;
+      P[b].x -= dx / d * f; P[b].y -= dy / d * f;
     }
-    for (const p of P){                          // gentle pull toward the centre
-      p.x += (W/2 - p.x) * 0.008; p.y += (H/2 - p.y) * 0.008;
-      p.x = Math.max(40, Math.min(W - 40, p.x));
-      p.y = Math.max(26, Math.min(H - 26, p.y));
+    for (const q of P){                          // gentle pull to the centre
+      q.x += (W / 2 - q.x) * 0.008; q.y += (H / 2 - q.y) * 0.008;
+      q.x = Math.max(40, Math.min(W - 40, q.x));
+      q.y = Math.max(26, Math.min(H - 26, q.y));
     }
   }
 
-  let out = links.map(([a, b]) =>
-    `<line class="edge" x1="${P[a].x}" y1="${P[a].y}" x2="${P[b].x}" y2="${P[b].y}"/>`).join("");
+  function draw(){
+    for (const e of edgeEls){
+      e.el.setAttribute("x1", P[e.a].x.toFixed(1));
+      e.el.setAttribute("y1", P[e.a].y.toFixed(1));
+      e.el.setAttribute("x2", P[e.b].x.toFixed(1));
+      e.el.setAttribute("y2", P[e.b].y.toFixed(1));
+    }
+    for (const b of brokenEls){
+      const x = P[b.i].x + 44 * Math.cos(b.angle);
+      const y = P[b.i].y + 44 * Math.sin(b.angle);
+      b.line.setAttribute("x1", P[b.i].x.toFixed(1));
+      b.line.setAttribute("y1", P[b.i].y.toFixed(1));
+      b.line.setAttribute("x2", x.toFixed(1));
+      b.line.setAttribute("y2", y.toFixed(1));
+      b.dot.setAttribute("cx", x.toFixed(1));
+      b.dot.setAttribute("cy", y.toFixed(1));
+    }
+    for (const n of nodeEls){
+      n.el.setAttribute("transform",
+        `translate(${P[n.i].x.toFixed(1)},${P[n.i].y.toFixed(1)})`);
+      n.el.setAttribute("opacity", FILTER && FILTER !== n.domain ? ".25" : "1");
+    }
+  }
 
-  // A broken link points at a note that does not exist, drawn as a dashed stub
-  // to an empty circle - the visible edge of unfinished thinking.
-  g.broken.forEach((b, k) => {
-    const i = idx[b.source];
-    if (i === undefined) return;
-    const a = (k / Math.max(g.broken.length, 1)) * Math.PI * 2;
-    const x = P[i].x + 44*Math.cos(a), y = P[i].y + 44*Math.sin(a);
-    out += `<line class="edge broken" x1="${P[i].x}" y1="${P[i].y}" x2="${x}" y2="${y}"/>
-            <circle class="ghost" cx="${x}" cy="${y}" r="6"><title>broken: ${esc(b.target)}</title></circle>`;
-  });
-
-  g.nodes.forEach((n, i) => {
-    const c = colorOf[n.domain] || "#4fd1c5";
-    const r = 5 + Math.min(n.degree, 8) * 1.5;
-    const faded = FILTER && FILTER !== n.domain ? ' opacity=".25"' : "";
-    out += `<g class="gnode" data-slug="${esc(n.slug)}"${faded}>
-      <circle class="gn-c" cx="${P[i].x}" cy="${P[i].y}" r="${r}" fill="${c}" fill-opacity=".3" stroke="${c}" stroke-width="1.5"/>
-      <text class="gn-t" x="${P[i].x}" y="${P[i].y - r - 5}" text-anchor="middle">${esc(n.title.slice(0, 22))}</text>
-      <title>${esc(n.title)} — ${n.degree} connection${n.degree === 1 ? "" : "s"}</title>
-    </g>`;
-  });
-
-  svg.innerHTML = out;
-  svg.querySelectorAll(".gnode").forEach(el =>
-    el.addEventListener("click", () => openNote(el.dataset.slug)));
+  // Settle on screen rather than arriving pre-solved: the layout is a physics
+  // simulation, and watching it resolve is the clearest way to show that.
+  const TOTAL = 260;
+  let done = 0;
+  if (REDUCED){
+    while (done++ < TOTAL) relax();
+    draw();
+    return;
+  }
+  (function tick(){
+    for (let k = 0; k < 5 && done < TOTAL; k++, done++) relax();
+    draw();
+    if (done < TOTAL) graphFrame = requestAnimationFrame(tick);
+  })();
 }
 
 document.querySelectorAll(".tab").forEach(tab => tab.addEventListener("click", () => {
@@ -442,8 +673,8 @@ function renderNotes(){
     ? esc(t).replace(new RegExp("(" + q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "ig"), "<mark>$1</mark>")
     : esc(t);
 
-  $("notes").innerHTML = list.length ? list.map(n => `
-    <div class="note" data-slug="${esc(n.slug)}">
+  $("notes").innerHTML = list.length ? list.map((n, i) => `
+    <div class="note" data-slug="${esc(n.slug)}" style="animation-delay:${Math.min(i * 22, 400)}ms">
       <span class="t">${hi(n.title)}</span>
       <span class="d" style="background:${colorOf[n.domain]||"#4fd1c5"}">${esc(n.domain)}</span>
       <span class="m">${ago(n.modified)}</span>
@@ -462,8 +693,8 @@ $("search").addEventListener("input", renderNotes);
 
 function selectDomain(d){
   FILTER = (FILTER === d) ? null : d;      // clicking the same domain toggles it off
-  renderOrbit(STATS);
-  if (GRAPH) renderGraph(GRAPH);
+  // The orbit and graph read FILTER every frame, so they re-fade themselves.
+  // Rebuilding them here would snap every orbiting body back to its start.
   renderNotes();
   if (FILTER){
     $("q").value = `What do my notes on ${FILTER} cover?`;   // FR8: pre-filled question
@@ -472,8 +703,24 @@ function selectDomain(d){
 }
 $("clearChip").addEventListener("click", () => {
   FILTER = null; $("search").value = "";
-  renderOrbit(STATS); if (GRAPH) renderGraph(GRAPH); renderNotes();
+  renderNotes();
 });
+
+
+// Reveal the answer as text arriving rather than a block appearing. The answer
+// is already complete - this is presentation, not streaming - so it is capped
+// short enough never to make the reader wait on an animation.
+function typeOut(el, text, onDone){
+  if (REDUCED){ el.innerHTML = fmt(text); onDone && onDone(); return; }
+  const dur = Math.min(600 + text.length * 3.5, 1900), t0 = performance.now();
+  el.classList.add("typing");
+  (function step(now){
+    const p = Math.min((now - t0) / dur, 1);
+    el.textContent = text.slice(0, Math.round(text.length * p));
+    if (p < 1){ requestAnimationFrame(step); }
+    else { el.classList.remove("typing"); el.innerHTML = fmt(text); onDone && onDone(); }
+  })(t0);
+}
 
 /* ---------- FR5 + FR6: ask, answer, cite ---------- */
 async function ask(){
@@ -485,7 +732,8 @@ async function ask(){
   const turn = document.createElement("div");
   turn.className = "turn";
   turn.innerHTML = `<div class="you">${esc(question)}</div>
-                    <div class="answer thinking">searching your notes…</div>`;
+                    <div class="answer thinking">searching your notes<span class="dots">
+                       <i></i><i></i><i></i></span></div>`;
   thread.appendChild(turn);
   thread.scrollTop = thread.scrollHeight;
   $("q").value = ""; $("send").disabled = true;
@@ -499,8 +747,9 @@ async function ask(){
     const srcs = r.sources.map(s =>
       `<span class="src" data-slug="${esc(s.slug)}">${esc(s.title)}</span>`).join("");
     turn.innerHTML = `<div class="you">${esc(question)}</div>
-      <div class="answer">${fmt(r.answer)}</div>
+      <div class="answer"></div>
       ${r.sources.length ? `<div class="sources"><b>sources</b>${srcs}</div>` : ""}`;
+    typeOut(turn.querySelector(".answer"), r.answer, () => thread.scrollTop = thread.scrollHeight);
     turn.querySelectorAll(".src").forEach(el =>
       el.addEventListener("click", () => openNote(el.dataset.slug)));
   }catch(e){
@@ -528,6 +777,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") $("veil").cl
 
 /* ---------- boot ---------- */
 async function boot(){
+  startSky();
   await loadHealth();
   try{
     // Three independent reads, so fetch them together rather than in sequence.
@@ -562,6 +812,9 @@ setInterval(async () => {
     GRAPH = await api("/api/graph");
     renderStats(STATS); renderOrbit(STATS); renderNotes();
     if ($("view-graph").classList.contains("on")) renderGraph(GRAPH);
+    // Visible tell that the vault changed on disk and the page noticed.
+    const row = $("stats");
+    row.classList.remove("fresh"); void row.offsetWidth; row.classList.add("fresh");
   }catch{ /* backend restarting - the next tick will pick it up */ }
 }, 10000);
 </script>
