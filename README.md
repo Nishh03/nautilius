@@ -11,7 +11,7 @@ Nothing here needs a paid account. Two options for the AI layer, both free.
 
 ```bash
 git clone <this-repo-url>
-cd "Rishi Project"
+cd nautilius
 pip install -r requirements.txt
 ```
 

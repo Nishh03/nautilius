@@ -75,19 +75,22 @@ def _ollama(prompt: str) -> str:
 def _groq(prompt: str, _attempt: int = 0) -> str:
     if not config.GROQ_API_KEY:
         raise LLMError("GROQ_API_KEY is not set in .env")
-    r = httpx.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {config.GROQ_API_KEY}"},
-        json={
-            "model": config.GROQ_MODEL,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.2,
-        },
-        timeout=TIMEOUT,
-    )
+    try:
+        r = httpx.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {config.GROQ_API_KEY}"},
+            json={
+                "model": config.GROQ_MODEL,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+                "temperature": 0.2,
+            },
+            timeout=TIMEOUT,
+        )
+    except httpx.RequestError as exc:
+        raise LLMError(f"Cannot reach Groq: {exc}") from exc
 
     # The free tier is capped per minute, so a batch job hits 429 routinely.
     # Waiting is the correct response, not failing - but only a few times, or a
@@ -122,17 +125,21 @@ def _retry_after(response: httpx.Response) -> float:
 def _gemini(prompt: str, _attempt: int = 0) -> str:
     if not config.GEMINI_API_KEY:
         raise LLMError("GEMINI_API_KEY is not set in .env")
-    r = httpx.post(
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{config.GEMINI_MODEL}:generateContent",
-        headers={"x-goog-api-key": config.GEMINI_API_KEY},
-        json={
-            "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.2},
-        },
-        timeout=TIMEOUT,
-    )
+    try:
+        r = httpx.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{config.GEMINI_MODEL}:generateContent",
+            headers={"x-goog-api-key": config.GEMINI_API_KEY},
+            json={
+                "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.2},
+            },
+            timeout=TIMEOUT,
+        )
+    except httpx.RequestError as exc:
+        raise LLMError(f"Cannot reach Gemini: {exc}") from exc
+
     # 503 means the shared free capacity is busy, 429 means the per-minute cap.
     # Both clear on their own, so waiting beats failing the whole batch run.
     if r.status_code in (429, 503) and _attempt < GEMINI_RETRIES:
@@ -171,20 +178,23 @@ def _openrouter(prompt: str) -> str:
     """OpenRouter fronts many models behind one key, several of them free."""
     if not config.OPENROUTER_API_KEY:
         raise LLMError("OPENROUTER_API_KEY is not set in .env")
-    r = httpx.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={"Authorization": f"Bearer {config.OPENROUTER_API_KEY}",
-                 "X-Title": "Nautilus"},
-        json={
-            "model": config.OPENROUTER_MODEL,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.2,
-        },
-        timeout=TIMEOUT,
-    )
+    try:
+        r = httpx.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {config.OPENROUTER_API_KEY}",
+                     "X-Title": "Nautilus"},
+            json={
+                "model": config.OPENROUTER_MODEL,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+                "temperature": 0.2,
+            },
+            timeout=TIMEOUT,
+        )
+    except httpx.RequestError as exc:
+        raise LLMError(f"Cannot reach OpenRouter: {exc}") from exc
     if r.status_code != 200:
         raise LLMError(f"OpenRouter returned {r.status_code}: {r.text[:200]}")
     return r.json()["choices"][0]["message"]["content"].strip()
