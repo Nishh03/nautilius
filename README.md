@@ -106,10 +106,10 @@ search index or the AI, but `tags` and keys like `status` stay available.
 python backend/test_nautilus.py
 ```
 
-41 checks over reading, domains, the link graph, retrieval, the automation
-safety rules, and the edge cases that break a demo (empty vault, empty note,
-unicode titles, an unreachable AI provider). No network, no pytest, runs in
-under a second.
+59 checks over reading notes, Obsidian frontmatter and tag-derived domains,
+domain counts, the link graph, keyword retrieval, the automation safety rules,
+and the edge cases that break a demo (empty vault, empty note, unicode titles,
+an unreachable AI provider). No network, no pytest, runs in under a second.
 
 ## The AI provider
 
