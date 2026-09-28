@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nautilus — Documentation</title>
+<style>
+  :root{
+    --paper:#f6f9fa; --card:#fff; --ink:#0f1c26; --muted:#54707f; --faint:#7f97a3;
+    --line:#d9e4e8; --accent:#0a7169;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{--paper:#070e15; --card:#0d1720; --ink:#e3eef4; --muted:#8aa2b1;
+          --faint:#6b8394; --line:#1b2b38; --accent:#4fd1c5}
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--paper); color:var(--ink);
+    font:16px/1.6 "Segoe UI",system-ui,-apple-system,sans-serif;
+    display:flex; align-items:center; justify-content:center; min-height:100vh; padding:32px}
+  .wrap{max-width:720px; width:100%}
+  .eyebrow{font-family:Consolas,monospace; font-size:11px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--accent); margin:0 0 12px}
+  h1{font-size:2.1rem; margin:0 0 10px; letter-spacing:-.02em}
+  .sub{color:var(--muted); margin:0 0 34px; font-size:1.05rem}
+  a.doc{display:block; text-decoration:none; color:inherit; background:var(--card);
+    border:1px solid var(--line); border-radius:12px; padding:20px 22px; margin-bottom:14px;
+    transition:border-color .18s, transform .18s}
+  a.doc:hover{border-color:var(--accent); transform:translateY(-2px)}
+  a.doc h2{margin:0 0 5px; font-size:1.15rem}
+  a.doc p{margin:0; color:var(--muted); font-size:14.5px}
+  a.doc .who{font-family:Consolas,monospace; font-size:10.5px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--accent); display:block; margin-bottom:7px}
+  .foot{color:var(--faint); font-size:13px; margin-top:28px; border-top:1px solid var(--line); padding-top:18px}
+  code{background:var(--line); padding:1px 5px; border-radius:4px; font-size:.88em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Nautilus · Software Group Project</p>
+  <h1>Documentation</h1>
+  <p class="sub">Two guides. Start with the first one.</p>
+
+  <a class="doc" href="1-presenting-nautilus.html">
+    <span class="who">Read this first — for whoever is demoing</span>
+    <h2>Presenting Nautilus</h2>
+    <p>What it is, the tech stack and why each choice was made, two flowcharts,
+       a six-minute demo script with the words to say, answers to the questions
+       you'll be asked, and what to do if something breaks.</p>
+  </a>
+
+  <a class="doc" href="2-future-scope.html">
+    <span class="who">For the "what next" question</span>
+    <h2>Where Nautilus Goes Next</h2>
+    <p>Twelve concrete features with difficulty ratings, who else this serves
+       beyond students, the six limitations that would need fixing first, and
+       what we deliberately would not build.</p>
+  </a>
+
+  <p class="foot">
+    Open these by double-clicking, or from the project root run
+    <code>python -m uvicorn app:app --app-dir backend</code> and visit
+    <code>http://127.0.0.1:8000</code> for the app itself.
+  </p>
+</div>
+</body>
+</html>

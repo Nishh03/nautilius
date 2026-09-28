@@ -1,0 +1,645 @@
+<title>Presenting Nautilus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+
+<style>
+  :root{
+    --paper:#f6f9fa; --card:#ffffff; --ink:#0f1c26; --muted:#54707f; --faint:#7f97a3;
+    --line:#d9e4e8; --line-soft:#e8eff2; --accent:#0a7169; --accent-soft:#e2f1ef;
+    --alt:#3d5c8c; --alt-soft:#e8eef7; --warn:#8a5410; --warn-soft:#faf0e2;
+    --code-bg:#eef3f5; --shadow:0 1px 2px rgba(15,28,38,.05), 0 8px 24px rgba(15,28,38,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#070e15; --card:#0d1720; --ink:#e3eef4; --muted:#8aa2b1; --faint:#6b8394;
+      --line:#1b2b38; --line-soft:#152331; --accent:#4fd1c5; --accent-soft:#0f2b2c;
+      --alt:#93b2e2; --alt-soft:#131f31; --warn:#e3a962; --warn-soft:#2a1f10;
+      --code-bg:#0a141d; --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#070e15; --card:#0d1720; --ink:#e3eef4; --muted:#8aa2b1; --faint:#6b8394;
+    --line:#1b2b38; --line-soft:#152331; --accent:#4fd1c5; --accent-soft:#0f2b2c;
+    --alt:#93b2e2; --alt-soft:#131f31; --warn:#e3a962; --warn-soft:#2a1f10;
+    --code-bg:#0a141d; --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.28);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,Segoe UI,sans-serif;
+    font-size:16.5px; line-height:1.62; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{display:grid; grid-template-columns:1fr; max-width:1240px; margin:0 auto; padding:0 22px 100px}
+  @media (min-width:1080px){ .wrap{grid-template-columns:210px minmax(0,1fr); gap:56px; padding-right:40px} }
+
+  .mast{grid-column:1/-1; padding:60px 0 38px; border-bottom:1px solid var(--line); margin-bottom:44px}
+  .eyebrow{font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--accent); margin:0 0 14px}
+  .mast h1{font-family:"IBM Plex Serif",Georgia,serif; font-weight:600;
+    font-size:clamp(2.2rem,5.2vw,3.4rem); line-height:1.06; letter-spacing:-.02em;
+    margin:0 0 16px; text-wrap:balance}
+  .standfirst{font-size:1.13rem; color:var(--muted); max-width:60ch; margin:0 0 24px}
+  .facts{display:flex; flex-wrap:wrap; gap:10px 28px; font-family:"IBM Plex Mono",monospace;
+    font-size:12.5px; color:var(--faint)}
+  .facts b{color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums}
+
+  nav.toc{display:none}
+  @media (min-width:1080px){
+    nav.toc{display:block; position:sticky; top:0; align-self:start; max-height:100vh;
+      overflow-y:auto; padding:8px 0 40px; font-size:13.5px}
+    nav.toc ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px}
+    nav.toc a{display:flex; gap:9px; color:var(--muted); text-decoration:none;
+      padding:5px 8px; border-radius:5px}
+    nav.toc a:hover{color:var(--accent); background:var(--line-soft)}
+    nav.toc .n{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--faint);
+      padding-top:2px; font-variant-numeric:tabular-nums}
+  }
+
+  main{min-width:0}
+  section{padding:0 0 12px; scroll-margin-top:20px}
+  section + section{margin-top:58px; padding-top:50px; border-top:1px solid var(--line-soft)}
+  h2{font-family:"IBM Plex Serif",Georgia,serif; font-weight:600; font-size:1.7rem;
+    line-height:1.2; letter-spacing:-.012em; margin:0 0 8px; text-wrap:balance;
+    display:flex; align-items:baseline; gap:14px}
+  h2 .num{font-family:"IBM Plex Mono",monospace; font-size:.78rem; font-weight:500;
+    color:var(--accent); letter-spacing:.06em; flex:none}
+  .lede{color:var(--muted); max-width:66ch; margin:0 0 26px; font-size:1.02rem}
+  h3{font-size:1.06rem; font-weight:600; margin:32px 0 10px; letter-spacing:-.005em}
+  h4{font-family:"IBM Plex Mono",monospace; font-size:.78rem; font-weight:600;
+    text-transform:uppercase; letter-spacing:.11em; color:var(--faint); margin:26px 0 10px}
+  p{margin:0 0 15px; max-width:68ch}
+  ul,ol{margin:0 0 15px; padding-left:20px; max-width:68ch}
+  li{margin-bottom:7px}
+  li::marker{color:var(--faint)}
+  strong{font-weight:600}
+  a{color:var(--accent)}
+
+  code{font-family:"IBM Plex Mono",monospace; font-size:.87em; background:var(--code-bg);
+    padding:1.5px 5px; border-radius:4px; border:1px solid var(--line-soft)}
+  pre{background:var(--code-bg); border:1px solid var(--line); border-radius:9px;
+    padding:15px 17px; overflow-x:auto; margin:0 0 18px; font-size:13px; line-height:1.6}
+  pre code{background:none; border:0; padding:0; font-size:inherit}
+  .cm{color:var(--faint)}
+
+  .tw{overflow-x:auto; margin:0 0 20px; border:1px solid var(--line); border-radius:9px; background:var(--card)}
+  table{border-collapse:collapse; width:100%; font-size:14.4px}
+  th,td{text-align:left; padding:10px 15px; border-bottom:1px solid var(--line-soft); vertical-align:top}
+  th{font-family:"IBM Plex Mono",monospace; font-size:11px; text-transform:uppercase;
+    letter-spacing:.09em; color:var(--faint); font-weight:600; background:var(--line-soft); white-space:nowrap}
+  tr:last-child td{border-bottom:0}
+  td code{font-size:.85em}
+
+  figure{margin:26px 0 28px}
+  figure svg{display:block; width:100%; height:auto; max-width:100%; background:var(--card);
+    border:1px solid var(--line); border-radius:11px; padding:16px 10px}
+  .figscroll{overflow-x:auto}
+  figcaption{font-size:13.2px; color:var(--muted); margin-top:11px; max-width:66ch}
+  figcaption b{color:var(--ink); font-weight:600}
+
+  .note{background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:15px 18px; margin:0 0 20px; box-shadow:var(--shadow)}
+  .note.warn{background:var(--warn-soft); border-color:transparent}
+  .note.key{background:var(--accent-soft); border-color:transparent}
+  .note.say{background:var(--alt-soft); border-color:transparent}
+  .note p:last-child,.note ul:last-child,.note ol:last-child{margin-bottom:0}
+  .note .tag{font-family:"IBM Plex Mono",monospace; font-size:10.5px; text-transform:uppercase;
+    letter-spacing:.12em; color:var(--faint); display:block; margin-bottom:7px}
+  .note.warn .tag{color:var(--warn)}
+  .note.key .tag{color:var(--accent)}
+  .note.say .tag{color:var(--alt)}
+  .note.say p{font-size:1.02rem; font-style:italic}
+
+  .steps{list-style:none; padding:0; margin:0 0 22px; counter-reset:step}
+  .steps li{counter-increment:step; display:grid; grid-template-columns:30px minmax(0,1fr);
+    gap:14px; align-items:start; margin:0 0 14px; max-width:none}
+  .steps li::before{content:counter(step); font-family:"IBM Plex Mono",monospace;
+    font-size:12px; font-weight:600; width:26px; height:26px; border-radius:50%;
+    background:var(--accent); color:var(--paper); display:flex; align-items:center;
+    justify-content:center; margin-top:2px}
+  .steps b{display:block; margin-bottom:2px}
+  .steps span{color:var(--muted); font-size:14.6px}
+
+  .qa{margin:0 0 12px; border:1px solid var(--line); border-radius:10px; background:var(--card); overflow:hidden}
+  .qa summary{cursor:pointer; padding:13px 17px; font-weight:600; font-size:.99rem;
+    list-style:none; display:flex; gap:11px; align-items:baseline}
+  .qa summary::-webkit-details-marker{display:none}
+  .qa summary::before{content:"?"; font-family:"IBM Plex Mono",monospace; color:var(--accent); flex:none}
+  .qa summary:hover{color:var(--accent)}
+  .qa summary:focus-visible{outline:2px solid var(--accent); outline-offset:-3px}
+  .qa[open] summary{border-bottom:1px solid var(--line-soft)}
+  .qa .body{padding:15px 17px 3px}
+  .qa .body p{font-size:15.2px}
+
+  footer{grid-column:1/-1; margin-top:60px; padding-top:24px; border-top:1px solid var(--line);
+    color:var(--faint); font-size:13.4px}
+  @media (prefers-reduced-motion:reduce){ *{animation:none!important; transition:none!important} }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">Nautilus &middot; Presenter's Guide</p>
+    <h1>Presenting Nautilus</h1>
+    <p class="standfirst">
+      Everything you need to demo this project and answer questions about it &mdash;
+      written for someone who did not build it.
+    </p>
+    <div class="facts">
+      <span><b>65</b> notes in the demo vault</span>
+      <span><b>7</b> agents</span>
+      <span><b>11</b> API endpoints</span>
+      <span><b>59</b> tests passing</span>
+      <span><b>0</b> paid services</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <ol>
+      <li><a href="#s1"><span class="n">01</span> In one minute</a></li>
+      <li><a href="#s2"><span class="n">02</span> The tech stack</a></li>
+      <li><a href="#s3"><span class="n">03</span> How it works</a></li>
+      <li><a href="#s4"><span class="n">04</span> A question, step by step</a></li>
+      <li><a href="#s5"><span class="n">05</span> The four screens</a></li>
+      <li><a href="#s6"><span class="n">06</span> The agents</a></li>
+      <li><a href="#s7"><span class="n">07</span> The demo script</a></li>
+      <li><a href="#s8"><span class="n">08</span> Questions you'll get</a></li>
+      <li><a href="#s9"><span class="n">09</span> If it breaks</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+  <!-- ============ 1 -->
+  <section id="s1">
+    <h2><span class="num">01</span> Nautilus in one minute</h2>
+    <p class="lede">Learn this paragraph. Everything else is detail.</p>
+
+    <div class="note say">
+      <span class="tag">Say this first</span>
+      <p>
+        &ldquo;Nautilus turns a folder of plain notes into a system that can show you
+        what you know, answer questions using only your own writing, and keep itself
+        organised. Everything runs on your own machine, the notes stay plain text
+        files, and nothing in it costs money.&rdquo;
+      </p>
+    </div>
+
+    <h3>Why it exists</h3>
+    <p>Four things already exist, and each solves only part of the problem:</p>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>What exists</th><th>What it can't do</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Note apps</strong> (Obsidian, Notion)</td><td>They store your notes but can't think about them</td></tr>
+          <tr><td><strong>Chatbots</strong> (ChatGPT)</td><td>They can think, but they don't know anything about you</td></tr>
+          <tr><td><strong>AI note tools</strong> (Notion AI)</td><td>Your data sits on their servers and you rent the AI</td></tr>
+          <tr><td><strong>Productivity methods</strong></td><td>They only work if you stay disciplined forever</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note key">
+      <span class="tag">The sentence that wins the argument</span>
+      <p>
+        &ldquo;Obsidian stores but can't reason. ChatGPT reasons but doesn't know you.
+        Nautilus does both &mdash; over files you own, with an AI you can swap out in
+        one line.&rdquo;
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 2 -->
+  <section id="s2">
+    <h2><span class="num">02</span> The tech stack</h2>
+    <p class="lede">What it's built with, and <em>why</em> &mdash; the why is what gets marks.</p>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>Layer</th><th>Technology</th><th>Why this one</th></tr></thead>
+        <tbody>
+          <tr><td>Language</td><td><strong>Python 3.12</strong></td><td>Standard for anything AI-related</td></tr>
+          <tr><td>Web server</td><td><strong>FastAPI + Uvicorn</strong></td><td>Fast, and generates its own API docs</td></tr>
+          <tr><td>Frontend</td><td><strong>Plain HTML, CSS, JavaScript</strong></td><td>One file, no build step &mdash; a requirement was &ldquo;simple to run&rdquo;</td></tr>
+          <tr><td>Charts &amp; graphs</td><td><strong>Hand-drawn SVG</strong></td><td>No chart library; nothing to install, works offline</td></tr>
+          <tr><td>Storage</td><td><strong>Plain markdown files</strong></td><td><em>No database.</em> Delete Nautilus and you still have every note</td></tr>
+          <tr><td>Search</td><td><strong>Keyword scoring</strong> (own code)</td><td>Free, instant, and explainable</td></tr>
+          <tr><td>AI</td><td><strong>Gemini / Groq / OpenRouter / Ollama</strong></td><td>Four providers, all free, swap with one line</td></tr>
+          <tr><td>Scheduling</td><td><strong>Windows Task Scheduler</strong></td><td>Built into Windows, free, no admin rights</td></tr>
+          <tr><td>Testing</td><td><strong>Own test runner</strong></td><td>59 checks, no dependencies, runs in under a second</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note key">
+      <span class="tag">The theme to repeat</span>
+      <p>
+        <strong>Nothing here costs money and nothing requires installing a big
+        framework.</strong> Every choice was made so the whole thing runs on a normal
+        laptop with a free AI key &mdash; or with no internet at all, using a local model.
+      </p>
+    </div>
+
+    <h4>How big is it?</h4>
+    <p>
+      About <strong>4,300 lines</strong> &mdash; roughly 900 of backend, 1,400 of frontend,
+      1,200 of agents, 300 of tests, and 500 of supporting code. Small enough that
+      every line was written deliberately.
+    </p>
+  </section>
+
+  <!-- ============ 3 -->
+  <section id="s3">
+    <h2><span class="num">03</span> How the whole thing works</h2>
+    <p class="lede">Three parts. Learn the shape and you can explain any of it.</p>
+
+    <figure>
+      <div class="figscroll">
+      <svg viewBox="0 0 880 420" role="img" aria-label="Three parts: a folder of markdown notes on disk, a Python server that reads it fresh on every request, and a browser dashboard. Seven agents also read the folder and write new notes back into it.">
+        <defs>
+          <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+          <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+
+        <text x="40" y="34" font-family="IBM Plex Mono,monospace" font-size="11" letter-spacing="1.5" fill="var(--faint)">1 &middot; WHAT YOU SEE</text>
+        <rect x="40" y="46" width="330" height="62" rx="9" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="60" y="72" font-family="IBM Plex Sans,sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Dashboard in the browser</text>
+        <text x="60" y="92" font-family="IBM Plex Mono,monospace" font-size="11" fill="var(--muted)">one HTML file &middot; no install, no build</text>
+
+        <line x1="205" y1="108" x2="205" y2="146" stroke="currentColor" stroke-width="1.4" marker-end="url(#a1)"/>
+        <text x="215" y="132" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--muted)">asks for data</text>
+
+        <text x="40" y="170" font-family="IBM Plex Mono,monospace" font-size="11" letter-spacing="1.5" fill="var(--faint)">2 &middot; THE BRAIN</text>
+        <rect x="40" y="182" width="330" height="96" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="60" y="208" font-family="IBM Plex Sans,sans-serif" font-size="13.5" font-weight="600" fill="var(--accent)">Python server</text>
+        <text x="60" y="230" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor">vault.py &mdash; reads the notes</text>
+        <text x="60" y="248" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor">retrieve.py &mdash; finds the relevant ones</text>
+        <text x="60" y="266" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor">llm.py &mdash; talks to the AI</text>
+
+        <line x1="205" y1="278" x2="205" y2="318" stroke="var(--accent)" stroke-width="1.8" marker-end="url(#a2)"/>
+        <text x="215" y="302" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--accent)">reads EVERY time</text>
+
+        <text x="40" y="342" font-family="IBM Plex Mono,monospace" font-size="11" letter-spacing="1.5" fill="var(--faint)">3 &middot; THE MEMORY</text>
+        <rect x="40" y="354" width="330" height="54" rx="9" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="5 4"/>
+        <text x="60" y="378" font-family="IBM Plex Sans,sans-serif" font-size="13.5" font-weight="600" fill="var(--accent)">A folder of .md files</text>
+        <text x="60" y="396" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor">no database &mdash; the folder IS the database</text>
+
+        <line x1="370" y1="230" x2="440" y2="230" stroke="currentColor" stroke-width="1.4" marker-end="url(#a1)"/>
+        <rect x="442" y="182" width="200" height="96" rx="9" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="462" y="208" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="currentColor">Free AI provider</text>
+        <text x="462" y="230" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--muted)">Gemini &middot; Groq</text>
+        <text x="462" y="248" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--muted)">OpenRouter &middot; Ollama</text>
+        <text x="462" y="268" font-family="IBM Plex Sans,sans-serif" font-size="10.5" fill="var(--accent)">swap = 1 line</text>
+
+        <rect x="672" y="46" width="168" height="240" rx="9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4 4"/>
+        <text x="692" y="72" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="currentColor">7 agents</text>
+        <text x="692" y="92" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--muted)">organise</text>
+        <text x="692" y="110" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--muted)">digest</text>
+        <text x="692" y="128" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--muted)">conflicts</text>
+        <text x="692" y="146" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--muted)">progress</text>
+        <text x="692" y="164" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--muted)">radar</text>
+        <text x="692" y="182" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--muted)">applications</text>
+        <text x="692" y="200" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--muted)">coach</text>
+        <text x="692" y="232" font-family="IBM Plex Sans,sans-serif" font-size="10.5" fill="var(--muted)">run on a schedule,</text>
+        <text x="692" y="248" font-family="IBM Plex Sans,sans-serif" font-size="10.5" fill="var(--muted)">write notes back</text>
+        <text x="692" y="268" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--accent)">the only writers</text>
+
+        <path d="M 756 286 L 756 381 L 376 381" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4 4" marker-end="url(#a1)"/>
+      </svg>
+      </div>
+      <figcaption>
+        <b>The folder is the only place anything is stored.</b> The server reads it
+        fresh on every request, so what you see can never be out of date &mdash; and
+        the agents are the only things allowed to write to it.
+      </figcaption>
+    </figure>
+
+    <div class="note key">
+      <span class="tag">The best single point in the project</span>
+      <p>
+        <strong>There is no database.</strong> If you copied your notes into a database,
+        you'd have two copies of the truth, and they can disagree &mdash; that's where
+        &ldquo;why hasn't my edit shown up?&rdquo; bugs come from. Reading the folder
+        every time removes that whole problem. Nothing to sync, because there's
+        nothing else.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 4 -->
+  <section id="s4">
+    <h2><span class="num">04</span> What happens when you ask a question</h2>
+    <p class="lede">The single most likely thing you'll be asked to explain.</p>
+
+    <figure>
+      <div class="figscroll">
+      <svg viewBox="0 0 880 300" role="img" aria-label="Five steps: the question arrives, all notes are read from disk, each is scored for relevance, the best five are sent to the AI with strict instructions, and the answer comes back naming which notes were used.">
+        <defs>
+          <marker id="b1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <rect x="24" y="40" width="150" height="58" rx="9" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="99" y="65" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="12.5" font-weight="600" fill="currentColor">You ask</text>
+        <text x="99" y="84" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--muted)">a question</text>
+        <line x1="174" y1="69" x2="212" y2="69" stroke="currentColor" stroke-width="1.4" marker-end="url(#b1)"/>
+
+        <rect x="214" y="40" width="150" height="58" rx="9" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="289" y="65" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="12.5" font-weight="600" fill="currentColor">Read all notes</text>
+        <text x="289" y="84" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--muted)">from the folder</text>
+        <line x1="364" y1="69" x2="402" y2="69" stroke="currentColor" stroke-width="1.4" marker-end="url(#b1)"/>
+
+        <rect x="404" y="28" width="196" height="82" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="502" y="52" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="12.5" font-weight="600" fill="var(--accent)">Score every note</text>
+        <text x="502" y="72" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="currentColor">title match counts 6&times;</text>
+        <text x="502" y="89" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="currentColor">rare words count more</text>
+        <line x1="600" y1="69" x2="638" y2="69" stroke="currentColor" stroke-width="1.4" marker-end="url(#b1)"/>
+
+        <rect x="640" y="40" width="150" height="58" rx="9" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="715" y="65" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="12.5" font-weight="600" fill="currentColor">Keep the best 5</text>
+        <text x="715" y="84" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--muted)">discard the rest</text>
+
+        <path d="M 715 110 L 715 140 L 289 140 L 289 168" fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#b1)"/>
+
+        <rect x="24" y="170" width="530" height="76" rx="9" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="44" y="194" font-family="IBM Plex Sans,sans-serif" font-size="12.5" font-weight="600" fill="currentColor">Send to the AI with strict rules</text>
+        <text x="44" y="214" font-family="IBM Plex Mono,monospace" font-size="10.3" fill="var(--muted)">&ldquo;Use ONLY these notes. Never guess.&rdquo;</text>
+        <text x="44" y="232" font-family="IBM Plex Mono,monospace" font-size="10.3" fill="var(--muted)">&ldquo;If they don't cover it, say so and stop.&rdquo;</text>
+        <line x1="554" y1="208" x2="592" y2="208" stroke="currentColor" stroke-width="1.4" marker-end="url(#b1)"/>
+
+        <rect x="594" y="170" width="262" height="76" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="614" y="196" font-family="IBM Plex Sans,sans-serif" font-size="12.5" font-weight="600" fill="var(--accent)">Answer + its sources</text>
+        <text x="614" y="218" font-family="IBM Plex Mono,monospace" font-size="10.3" fill="currentColor">every source is clickable</text>
+        <text x="614" y="236" font-family="IBM Plex Mono,monospace" font-size="10.3" fill="currentColor">so you can check it</text>
+      </svg>
+      </div>
+      <figcaption>
+        <b>The AI never sees your whole vault &mdash; only the five most relevant notes.</b>
+        That's both why it's fast and why the answer can be traced back to a source.
+      </figcaption>
+    </figure>
+
+    <h3>Why only five notes?</h3>
+    <p>
+      An AI can only read a limited amount at once, and sending everything would be
+      slow and expensive. So the system picks the five notes most likely to contain
+      the answer. <strong>The picking is the clever part</strong> &mdash; a perfect AI
+      given the wrong notes still gives a wrong answer.
+    </p>
+
+    <div class="note say">
+      <span class="tag">If asked how it avoids making things up</span>
+      <p>
+        &ldquo;Four ways. It only sees notes from the vault. It's told to use nothing
+        else. It has to name which notes it used, so you can check. And if no note
+        matches, it never calls the AI at all.&rdquo;
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 5 -->
+  <section id="s5">
+    <h2><span class="num">05</span> The four screens</h2>
+    <p class="lede">What each part of the dashboard is for.</p>
+
+    <h3>1 &middot; Learning Path &mdash; the main view</h3>
+    <p>
+      Six columns, one per month of a study plan. Each holds the topics for that month:
+    </p>
+    <ul>
+      <li><strong>Teal with a tick</strong> &mdash; done. The note exists and has real content.</li>
+      <li><strong>Blue with an arrow</strong> &mdash; unlocked now. This is what to study next.</li>
+      <li><strong>Grey and dashed</strong> &mdash; locked. A later stage.</li>
+    </ul>
+    <div class="note key">
+      <span class="tag">The clever bit &mdash; worth saying out loud</span>
+      <p>
+        <strong>Nothing marks a topic as complete.</strong> There's no checkbox and no
+        database of progress. A topic counts as done when a note about it exists and
+        has been properly written. So the plan grades itself against the notes &mdash;
+        the way to finish a topic is to actually write it up.
+      </p>
+    </div>
+
+    <h3>2 &middot; Notes and Ask</h3>
+    <p>
+      Every note, newest first, with a filter box. Ask a question and the answer
+      arrives with clickable source chips. Clicking any note opens a <strong>full note
+      page</strong> with an auto-generated concept map.
+    </p>
+
+    <h3>3 &middot; Agents</h3>
+    <p>
+      Seven background workers, each with a schedule and a <strong>RUN</strong> button.
+      RUN is always a <em>preview</em> &mdash; it shows what the agent would do and
+      writes nothing. A web page should never be able to edit your notes.
+    </p>
+
+    <h3>4 &middot; System</h3>
+    <p>
+      Live status: which AI is connected, vault size, link counts, when each agent last
+      ran, uptime. <strong>Every row is read from something real</strong> &mdash; nothing
+      is a placeholder.
+    </p>
+  </section>
+
+  <!-- ============ 6 -->
+  <section id="s6">
+    <h2><span class="num">06</span> The seven agents</h2>
+    <p class="lede">The part that makes this a system rather than a search box.</p>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>Agent</th><th>What it does</th><th>Speed</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Progress</strong></td><td>Grades the study plan against the notes</td><td><strong>instant</strong></td></tr>
+          <tr><td><strong>Applications</strong></td><td>Counts job applications, says how many to send today</td><td><strong>instant</strong></td></tr>
+          <tr><td><strong>Organise</strong></td><td>Files rough notes into the right folder with tags and links</td><td>~2 min</td></tr>
+          <tr><td><strong>Digest</strong></td><td>Writes a weekly summary of what you studied</td><td>~1 min</td></tr>
+          <tr><td><strong>Coach</strong></td><td>Makes interview questions from your own notes</td><td>~2 min</td></tr>
+          <tr><td><strong>Radar</strong></td><td>Reads AI news feeds, keeps only what matches your notes</td><td>~2 min</td></tr>
+          <tr><td><strong>Conflicts</strong></td><td>Finds notes that contradict each other</td><td>3 min+</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note warn">
+      <span class="tag">For the demo &mdash; important</span>
+      <p>
+        <strong>Click Progress and Applications.</strong> Both finish instantly because
+        they don't need the AI. The others work, but make everyone wait a couple of
+        minutes &mdash; don't click Conflicts in front of an audience.
+      </p>
+    </div>
+
+    <h3>The four safety rules</h3>
+    <p>These agents are the only part that can change your notes, so:</p>
+    <ol>
+      <li><strong>Preview by default.</strong> Nothing is written unless you add <code>--apply</code>.</li>
+      <li><strong>Never overwrite.</strong> A file is never replaced; it gets a new name.</li>
+      <li><strong>Never invent.</strong> If the AI makes up a link to a note that doesn't exist, it's thrown away.</li>
+      <li><strong>Always logged.</strong> Every run is recorded, even previews.</li>
+    </ol>
+  </section>
+
+  <!-- ============ 7 -->
+  <section id="s7">
+    <h2><span class="num">07</span> The demo &mdash; do it in this order</h2>
+    <p class="lede">Six minutes. Practise it once before you present.</p>
+
+    <ol class="steps">
+      <li><b>Start on the Learning Path</b>
+        <span>&ldquo;This is a six-month study plan. Teal means done, blue means unlocked
+        next, grey is locked. It says 40 of 48 topics, 83%.&rdquo;</span></li>
+      <li><b>Point at the blue nodes</b>
+        <span>&ldquo;These two are what I should study next. Nothing marks them &mdash;
+        the plan checks itself against the notes I've actually written.&rdquo;</span></li>
+      <li><b>Click any teal topic</b>
+        <span>The note page opens. Wait ~10s for the concept map. &ldquo;The AI broke
+        my note into its ideas and drew how they connect.&rdquo;</span></li>
+      <li><b>Click a blue link inside the note</b>
+        <span>&ldquo;Notes link to each other, so you can browse straight through.&rdquo;
+        Then press Back.</span></li>
+      <li><b>Ask the vault a question</b>
+        <span>Try: <em>&ldquo;What should I focus on in month 4 and why?&rdquo;</em>
+        Then click a source chip. &ldquo;Every answer names its sources, so I can check it.&rdquo;</span></li>
+      <li><b>Ask something NOT in the notes</b>
+        <span>Try: <em>&ldquo;What did I write about my holiday in Portugal?&rdquo;</em>
+        It refuses. <strong>This is the best moment in the demo</strong> &mdash;
+        &ldquo;that's the difference between this and ChatGPT.&rdquo;</span></li>
+      <li><b>Scroll to Agents, click Progress</b>
+        <span>&ldquo;Seven background workers. This one grades my plan. RUN is always a
+        preview &mdash; a web page can't edit my notes.&rdquo;</span></li>
+      <li><b>Point at the System panel</b>
+        <span>&ldquo;Live status. Every row is real &mdash; the AI connected, my vault
+        size, when each agent last ran.&rdquo;</span></li>
+    </ol>
+
+    <div class="note key">
+      <span class="tag">If you only have two minutes</span>
+      <p>
+        Do steps <strong>1, 5 and 6</strong>. The learning path, one grounded answer,
+        and the refusal. That's the whole idea of the project in 90 seconds.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 8 -->
+  <section id="s8">
+    <h2><span class="num">08</span> Questions you'll get</h2>
+    <p class="lede">Click to open. Short answers you can say out loud.</p>
+
+    <details class="qa"><summary>Why didn't you use a database?</summary><div class="body">
+      <p>Because a database means two copies of the notes, and two copies can disagree.
+      Reading the folder every time means there's nothing to sync. It also means if you
+      delete Nautilus, you still have every note &mdash; nothing is locked in.</p>
+    </div></details>
+
+    <details class="qa"><summary>Why keyword search instead of AI embeddings?</summary><div class="body">
+      <p>Three reasons: it's enough for a few hundred notes, it's free and instant, and
+      it's explainable &mdash; I can show exactly why a note was picked.</p>
+      <p>The honest limit: if a note says &ldquo;car&rdquo; and you ask about
+      &ldquo;automobile&rdquo;, it misses. Embeddings fix that, and it's the documented
+      next step &mdash; but it adds cost and complexity we didn't need yet.</p>
+    </div></details>
+
+    <details class="qa"><summary>How is this different from ChatGPT?</summary><div class="body">
+      <p>ChatGPT doesn't know my notes and can't tell me which of them an answer came
+      from. Nautilus answers only from my own writing and names its sources.</p>
+      <p>And with a local AI model, nothing leaves the laptop at all.</p>
+    </div></details>
+
+    <details class="qa"><summary>What happens if the AI service goes down?</summary><div class="body">
+      <p>The dashboard keeps working completely &mdash; the learning path, notes, graph
+      and stats never touch the AI. Only the chat stops.</p>
+      <p>And there's a fallback chain: if Gemini is busy it automatically tries Groq,
+      then the local model. That actually happened while building &mdash; Gemini was
+      overloaded, it switched to Groq, the job finished.</p>
+    </div></details>
+
+    <details class="qa"><summary>Is this actually multi-agent, or just scripts?</summary><div class="body">
+      <p>Seven agents share one memory &mdash; the notes folder. Each one reads it,
+      does its own job, and writes results back for the others to use.</p>
+      <p>Concrete proof: the Applications agent writes a summary note, and then you can
+      ask the chat &ldquo;how many applications am I waiting on?&rdquo; and it answers
+      from that note. One agent's output becomes another part's input.</p>
+    </div></details>
+
+    <details class="qa"><summary>Can it connect to LinkedIn?</summary><div class="body">
+      <p>No, and that's deliberate. LinkedIn has no public API for applications or
+      connections, and scraping it breaks their terms and gets accounts banned.</p>
+      <p>Instead you log applications as notes, and the agent counts them and tells you
+      how many to send today. Same result, nothing that can break.</p>
+    </div></details>
+
+    <details class="qa"><summary>How do you know it works?</summary><div class="body">
+      <p>59 automated tests, running in under a second. They cover reading notes,
+      building the link graph, the search scoring, and the agent safety rules.</p>
+      <p>You can run them live: <code>python backend/test_nautilus.py</code>. That's a
+      stronger answer than describing it.</p>
+    </div></details>
+
+    <details class="qa"><summary>What was the hardest problem?</summary><div class="body">
+      <p>The Conflicts agent was reporting failures as &ldquo;no conflicts found&rdquo;.
+      When the AI service hit its rate limit, the code caught the error and printed a
+      clean result &mdash; so a check that never ran looked identical to one that found
+      nothing.</p>
+      <p>The fix was making &ldquo;couldn't check&rdquo; a different result from
+      &ldquo;checked, found nothing&rdquo;, with a test that keeps them apart. It's a
+      bug about being honest in reporting, which is a good thing to have caught.</p>
+    </div></details>
+  </section>
+
+  <!-- ============ 9 -->
+  <section id="s9">
+    <h2><span class="num">09</span> If something breaks</h2>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>Problem</th><th>What to do</th></tr></thead>
+        <tbody>
+          <tr><td>Page won't load</td><td>The server isn't running. In a terminal:<br><code>python -m uvicorn app:app --app-dir backend</code></td></tr>
+          <tr><td>Chat says &ldquo;every provider failed&rdquo;</td><td>No internet, or all keys are out. Say: &ldquo;the dashboard still works &mdash; only the chat needs AI.&rdquo; Then demo the Learning Path and Progress agent.</td></tr>
+          <tr><td>Concept map won't generate</td><td>Same cause. The note itself still displays fine.</td></tr>
+          <tr><td>An agent times out</td><td>Expected for the slow ones. Use Progress or Applications instead.</td></tr>
+          <tr><td>Everything looks broken</td><td>Refresh the page. If still broken, restart the server.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note say">
+      <span class="tag">If the AI fails mid-demo, say this</span>
+      <p>
+        &ldquo;That's the free AI tier being busy &mdash; which is exactly why the system
+        has four providers and falls back automatically. Let me show you the parts that
+        don't need it.&rdquo;
+      </p>
+    </div>
+
+    <div class="note warn">
+      <span class="tag">Before you present</span>
+      <ul>
+        <li>Start the server <strong>10 minutes early</strong> and load the page once</li>
+        <li>Open one note so the concept map is already warm</li>
+        <li>Ask one question to confirm the AI is responding</li>
+        <li>Have the terminal open and ready to run the tests</li>
+      </ul>
+    </div>
+  </section>
+
+  </main>
+
+  <footer>
+    Nautilus &mdash; Software Group Project. Python, FastAPI, plain HTML/CSS/JS,
+    four free AI providers, no paid services. All 11 functional requirements
+    implemented, 59 tests passing.
+  </footer>
+
+</div>

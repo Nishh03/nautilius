@@ -5,6 +5,17 @@ Turn a folder of markdown notes into a system that can **show** what you know,
 
 Local-first, no database, no build tools, and free to run.
 
+## Documentation
+
+Open `docs/guides/index.html` in a browser, or go straight to:
+
+| Guide | For |
+|---|---|
+| `docs/guides/1-presenting-nautilus.html` | **Start here.** What Nautilus is, the tech stack and the reasoning behind it, flowcharts, a six-minute demo script, and the questions you will be asked |
+| `docs/guides/2-future-scope.html` | Where the project goes next, who else it serves, and what would need fixing first |
+
+Both are self-contained HTML - just double-click them.
+
 ## Running it on another machine
 
 Nothing here needs a paid account. Two options for the AI layer, both free.
