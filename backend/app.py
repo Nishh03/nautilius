@@ -10,6 +10,8 @@ POST /api/ask       FR5, FR6  - grounded answer with named sources
 """
 from __future__ import annotations
 
+import json
+import re
 import subprocess
 import sys
 import time
@@ -279,6 +281,92 @@ def note(slug: str):
         if n.slug == slug:
             return n.to_dict(include_body=True)
     raise HTTPException(status_code=404, detail=f"No note '{slug}'")
+
+
+CONCEPT_PROMPT = """Below is one note from a personal knowledge vault.
+
+--- NOTE "{title}" ---
+{body}
+
+Break this note into the ideas it actually contains, and how they relate, so it
+can be drawn as a diagram.
+
+Reply with ONLY a JSON object:
+
+{{"summary": "one sentence saying what this note is really about",
+  "nodes": [{{"id": "n1", "label": "short phrase, 1-4 words", "kind": "core|idea|cost|benefit"}}],
+  "edges": [{{"from": "n1", "to": "n2", "label": "2-4 words saying how they relate"}}],
+  "takeaway": "the one thing to remember from this note"}}
+
+Rules:
+- Between 3 and 7 nodes. Exactly one node has kind "core": the central idea.
+- Every edge must connect two ids that exist in nodes.
+- Labels come from the note's own vocabulary. Invent nothing.
+- No prose, no code fence, only the JSON object."""
+
+
+@app.get("/api/map/{slug:path}")
+def note_map(slug: str):
+    """A concept map of one note, for the diagram on its page.
+
+    The model only reorganises what the note already says into nodes and
+    edges - it is not asked to add knowledge. Anything it returns that does
+    not hold together (an edge pointing at a node that does not exist, a
+    missing core) is dropped rather than drawn, because a diagram that
+    invents relationships is worse than no diagram.
+    """
+    note = next((n for n in vault.load_notes() if n.slug == slug), None)
+    if not note:
+        raise HTTPException(status_code=404, detail=f"No note '{slug}'")
+    if len(note.body.split()) < 20:
+        return {"ok": False, "reason": "This note is too short to diagram."}
+
+    prompt = CONCEPT_PROMPT.format(title=note.title, body=note.body[:3000])
+    try:
+        raw = llm.complete(prompt)
+    except llm.LLMError as exc:
+        return {"ok": False, "reason": str(exc)[:160]}
+
+    raw = raw.strip()
+    if raw.startswith("```"):
+        raw = re.sub(r"^```[a-z]*\n?|```$", "", raw, flags=re.M).strip()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", raw, re.S)
+        if not match:
+            return {"ok": False, "reason": "The model did not return a usable map."}
+        try:
+            data = json.loads(match.group(0))
+        except json.JSONDecodeError:
+            return {"ok": False, "reason": "The model did not return a usable map."}
+
+    nodes = [n for n in (data.get("nodes") or [])
+             if isinstance(n, dict) and n.get("id") and n.get("label")][:7]
+    if len(nodes) < 2:
+        return {"ok": False, "reason": "Not enough distinct ideas to draw."}
+
+    ids = {n["id"] for n in nodes}
+    edges = [e for e in (data.get("edges") or [])
+             if isinstance(e, dict) and e.get("from") in ids and e.get("to") in ids
+             and e.get("from") != e.get("to")]
+
+    # Exactly one core, so the layout always has a centre to build around.
+    if not any(n.get("kind") == "core" for n in nodes):
+        nodes[0]["kind"] = "core"
+    seen_core = False
+    for n in nodes:
+        if n.get("kind") == "core":
+            if seen_core:
+                n["kind"] = "idea"
+            seen_core = True
+        elif n.get("kind") not in {"idea", "cost", "benefit"}:
+            n["kind"] = "idea"
+
+    return {"ok": True, "title": note.title,
+            "summary": str(data.get("summary", ""))[:400],
+            "takeaway": str(data.get("takeaway", ""))[:400],
+            "nodes": nodes, "edges": edges}
 
 
 @app.post("/api/ask")

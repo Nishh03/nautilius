@@ -416,6 +416,97 @@
     display:block; font-family:"Cascadia Code",Consolas,monospace; font-size:10px;
     letter-spacing:1.4px; color:var(--accent-2); margin-bottom:6px; font-weight:400;
   }
+
+  /* ===== note page ================================================== */
+  .page{
+    position:fixed; inset:0; z-index:60; background:var(--bg);
+    overflow-y:auto; display:none;
+  }
+  .page.on{display:block; animation:riseIn .3s cubic-bezier(.2,.7,.3,1) both}
+  .pagebar{
+    position:sticky; top:0; z-index:2; display:flex; align-items:center; gap:14px;
+    padding:14px 26px; border-bottom:1px solid var(--line);
+    background:rgba(4,7,13,.9); backdrop-filter:blur(8px);
+  }
+  .back{
+    background:transparent; border:1px solid var(--line); color:var(--ink);
+    font-family:"Cascadia Code",Consolas,monospace; font-size:11px; letter-spacing:1.4px;
+    padding:7px 14px; border-radius:8px; cursor:pointer; transition:all .18s;
+  }
+  .back:hover{border-color:var(--accent); color:var(--accent)}
+  .pgmeta{
+    font-family:"Cascadia Code",Consolas,monospace; font-size:10.5px;
+    color:var(--dim); letter-spacing:1px;
+  }
+  .pagebody{
+    display:grid; grid-template-columns:minmax(0,1fr) 280px; gap:22px;
+    max-width:1320px; margin:0 auto; padding:26px;
+  }
+  @media (max-width:980px){ .pagebody{grid-template-columns:1fr} }
+
+  .pgmain h1{
+    font-size:30px; line-height:1.15; margin:0 0 10px; letter-spacing:-.4px;
+    text-wrap:balance;
+  }
+  .pgtags{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:22px}
+  .pgtags span{
+    font-family:"Cascadia Code",Consolas,monospace; font-size:10px; letter-spacing:1px;
+    padding:3px 9px; border-radius:999px; border:1px solid var(--line); color:var(--muted);
+  }
+  .pgmain .panel{margin-bottom:20px}
+  .diagram h2 span{text-transform:none; letter-spacing:0; color:var(--dim)}
+
+  #pgDiagram svg{width:100%; height:auto; display:block; padding:6px 0 10px}
+  .cnode rect{transition:all .2s}
+  .cnode text{font-size:11.5px; font-weight:500; pointer-events:none}
+  .cedge{fill:none; stroke:var(--dim); stroke-opacity:.5}
+  .celab{font-size:9px; fill:var(--dim); letter-spacing:.3px; pointer-events:none}
+  .csum{
+    padding:0 18px 14px; font-size:14px; color:var(--ink); line-height:1.6;
+  }
+  .ctake{
+    margin:0 18px 16px; padding:11px 14px; border-radius:9px;
+    background:rgba(53,224,212,.07); border:1px solid rgba(53,224,212,.25);
+    font-size:13.5px;
+  }
+  .ctake b{
+    display:block; font-family:"Cascadia Code",Consolas,monospace; font-size:9.5px;
+    letter-spacing:1.4px; color:var(--accent); margin-bottom:5px; font-weight:400;
+  }
+
+  .prose{padding:16px 20px 20px; font-size:14.6px; line-height:1.72; color:var(--ink)}
+  .prose h1,.prose h2,.prose h3{margin:22px 0 8px; line-height:1.25}
+  .prose h1{font-size:20px} .prose h2{font-size:17px} .prose h3{font-size:15px}
+  .prose h1:first-child,.prose h2:first-child{margin-top:0}
+  .prose p{margin:0 0 13px}
+  .prose li{margin:0 0 6px; margin-left:18px}
+  .prose code{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:4px;
+    padding:1px 5px; font-family:"Cascadia Code",Consolas,monospace; font-size:.88em;
+  }
+  .prose blockquote{
+    margin:0 0 13px; padding:2px 0 2px 14px; border-left:2px solid var(--line);
+    color:var(--muted);
+  }
+  .wl{
+    color:var(--accent-2); cursor:pointer; border-bottom:1px dotted var(--accent-2);
+  }
+  .wl:hover{color:var(--accent); border-color:var(--accent)}
+  .wl.dead{color:var(--danger); border-bottom-style:dashed; cursor:help}
+
+  .pgside .panel{margin-bottom:18px}
+  .lk{
+    display:block; padding:9px 16px; border-bottom:1px solid var(--line);
+    font-size:13px; cursor:pointer; transition:padding-left .15s, background .15s;
+  }
+  .lk:last-child{border-bottom:none}
+  .lk:hover{background:var(--panel-2); padding-left:22px}
+  .lk .d{
+    display:block; font-family:"Cascadia Code",Consolas,monospace;
+    font-size:9px; letter-spacing:1px; color:var(--dim); margin-top:2px;
+  }
+  .lk.dead{color:var(--danger); cursor:default}
+  .lk.dead:hover{padding-left:16px}
 </style>
 </head>
 <body>
@@ -511,6 +602,41 @@
   <div class="modal">
     <header><div class="logo"><h1 id="mTitle" style="font-size:16px"></h1></div><div class="spacer"></div><button class="x" id="mClose">✕</button></header>
     <pre id="mBody"></pre>
+  </div>
+</div>
+
+<div class="page" id="page">
+  <div class="pagebar">
+    <button class="back" id="pgBack">&#8592; BACK</button>
+    <span class="spacer"></span>
+    <span class="pgmeta" id="pgMeta"></span>
+  </div>
+  <div class="pagebody">
+    <div class="pgmain">
+      <h1 id="pgTitle"></h1>
+      <div class="pgtags" id="pgTags"></div>
+
+      <div class="panel diagram">
+        <h2>Concept map <div class="spacer"></div><span id="pgDiagState">generating…</span></h2>
+        <div id="pgDiagram"><div class="empty">reading the note…</div></div>
+      </div>
+
+      <div class="panel">
+        <h2>The note</h2>
+        <div class="prose" id="pgBody"></div>
+      </div>
+    </div>
+
+    <aside class="pgside">
+      <div class="panel">
+        <h2>Links out <div class="spacer"></div><span id="pgOutN"></span></h2>
+        <div id="pgOut"></div>
+      </div>
+      <div class="panel">
+        <h2>Links in <div class="spacer"></div><span id="pgInN"></span></h2>
+        <div id="pgIn"></div>
+      </div>
+    </aside>
   </div>
 </div>
 
@@ -655,6 +781,147 @@ let orbitFrame = null, ORBS = [];
 
 
 
+
+
+/* ---------- the note page -------------------------------------------
+   Opening a note is a page, not a popup: the note itself, a concept map
+   drawn from what it says, and the notes either side of it in the graph.  */
+const KIND_COLOR = {core:"#35e0d4", idea:"#6aa6ff", benefit:"#8cf5a8", cost:"#d9ac74"};
+
+function renderProse(text, titles){
+  // Escape first, then allow a small set of markdown back in. Wikilinks
+  // become clickable, and one that points nowhere is shown as broken rather
+  // than quietly rendered as if it worked.
+  let html = esc(text)
+    .replace(/^###\s+(.+)$/gm, "<h3>$1</h3>")
+    .replace(/^##\s+(.+)$/gm, "<h2>$1</h2>")
+    .replace(/^#\s+(.+)$/gm, "<h1>$1</h1>")
+    .replace(/^&gt;\s?(.*)$/gm, "<blockquote>$1</blockquote>")
+    .replace(/^[-*]\s+(.+)$/gm, "<li>$1</li>")
+    .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\[\[([^\]]+)\]\]/g, (m, t) => {
+      const key = t.split("|")[0].split("#")[0].trim();
+      const hit = titles[key.toLowerCase()];
+      return hit
+        ? '<span class="wl" data-slug="' + esc(hit) + '">' + esc(key) + '</span>'
+        : '<span class="wl dead" title="this note has not been written yet">' + esc(key) + '</span>';
+    });
+  return html.split(/\n{2,}/).map(block =>
+    /^\s*<(h[123]|li|blockquote)/.test(block) ? block : "<p>" + block.replace(/\n/g, " ") + "</p>"
+  ).join("");
+}
+
+function drawMap(m){
+  const W = 760, H = 430, CX = W / 2, CY = H / 2;
+  const core = m.nodes.find(n => n.kind === "core") || m.nodes[0];
+  const others = m.nodes.filter(n => n !== core);
+  const pos = {};
+
+  const box = lbl => ({w: Math.max(74, Math.min(168, lbl.length * 7.2 + 22)), h: 34});
+  pos[core.id] = {x: CX, y: CY, ...box(core.label)};
+  others.forEach((n, i) => {
+    const a = (i / others.length) * Math.PI * 2 - Math.PI / 2;
+    pos[n.id] = {x: CX + 258 * Math.cos(a), y: CY + 150 * Math.sin(a), ...box(n.label)};
+  });
+
+  // Edges first so nodes sit on top of them.
+  let out = m.edges.map(e => {
+    const a = pos[e.from], b = pos[e.to];
+    if (!a || !b) return "";
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const cx = mx - dy * 0.08, cy = my + dx * 0.08;
+    const lab = (e.label || "").slice(0, 22);
+    return '<path class="cedge" d="M' + a.x + ',' + a.y + ' Q' + cx + ',' + cy +
+           ' ' + b.x + ',' + b.y + '"/>' +
+           (lab ? '<text class="celab" x="' + cx + '" y="' + (cy - 4) +
+                  '" text-anchor="middle">' + esc(lab) + '</text>' : "");
+  }).join("");
+
+  out += m.nodes.map(n => {
+    const p = pos[n.id], c = KIND_COLOR[n.kind] || KIND_COLOR.idea;
+    const isCore = n.kind === "core";
+    return '<g class="cnode">' +
+      '<rect x="' + (p.x - p.w / 2) + '" y="' + (p.y - p.h / 2) + '" width="' + p.w +
+      '" height="' + p.h + '" rx="8" fill="' + c + '" fill-opacity="' +
+      (isCore ? ".22" : ".12") + '" stroke="' + c + '" stroke-width="' +
+      (isCore ? 1.8 : 1.1) + '"/>' +
+      '<text x="' + p.x + '" y="' + (p.y + 4) + '" text-anchor="middle" fill="' + c +
+      '">' + esc(n.label.slice(0, 22)) + '</text></g>';
+  }).join("");
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Concept map of this note">' +
+         out + '</svg>' +
+         (m.summary ? '<div class="csum">' + esc(m.summary) + '</div>' : "") +
+         (m.takeaway ? '<div class="ctake"><b>THE ONE THING</b>' + esc(m.takeaway) + '</div>' : "");
+}
+
+async function openNote(slug){
+  let n;
+  try{ n = await api("/api/note/" + slug.split("/").map(encodeURIComponent).join("/")); }
+  catch(e){ activity("COULD NOT OPEN NOTE", false); return; }
+
+  const titles = {};
+  NOTES.forEach(x => titles[x.title.toLowerCase()] = x.slug);
+
+  $("pgTitle").textContent = n.title;
+  $("pgMeta").textContent = n.domain.toUpperCase() + " · " + n.words + " WORDS · " + ago(n.modified);
+  $("pgTags").innerHTML = [n.domain, ...(n.tags || [])]
+    .map(t => "<span>" + esc(t) + "</span>").join("");
+  $("pgBody").innerHTML = renderProse(n.body, titles);
+
+  const outs = (n.links || []).map(t => {
+    const key = t.split("|")[0].split("#")[0].trim();
+    const hit = titles[key.toLowerCase()];
+    return hit
+      ? '<div class="lk" data-slug="' + esc(hit) + '">' + esc(key) + '</div>'
+      : '<div class="lk dead">' + esc(key) + '<span class="d">NOT WRITTEN YET</span></div>';
+  });
+  $("pgOut").innerHTML = outs.join("") || '<div class="empty">No outgoing links.</div>';
+  $("pgOutN").textContent = outs.length;
+
+  // Who points at this note - the backlinks, from the graph already loaded.
+  const ins = (GRAPH ? GRAPH.edges.filter(e => e.target === slug) : [])
+    .map(e => {
+      const src = NOTES.find(x => x.slug === e.source);
+      return src ? '<div class="lk" data-slug="' + esc(src.slug) + '">' + esc(src.title) +
+                   '<span class="d">' + esc(src.domain.toUpperCase()) + '</span></div>' : "";
+    }).filter(Boolean);
+  $("pgIn").innerHTML = ins.join("") || '<div class="empty">Nothing links here yet.</div>';
+  $("pgInN").textContent = ins.length;
+
+  $("page").querySelectorAll("[data-slug]").forEach(el =>
+    el.addEventListener("click", () => openNote(el.dataset.slug)));
+
+  $("page").classList.add("on");
+  $("page").scrollTop = 0;
+  history.replaceState(null, "", "#" + slug);
+
+  // The map costs a model call, so the page is usable before it arrives.
+  $("pgDiagState").textContent = "generating…";
+  $("pgDiagram").innerHTML = '<div class="empty">reading the note' +
+    '<span class="dots"><i></i><i></i><i></i></span></div>';
+  try{
+    const m = await api("/api/map/" + slug.split("/").map(encodeURIComponent).join("/"));
+    if (m.ok){
+      $("pgDiagram").innerHTML = drawMap(m);
+      $("pgDiagState").textContent = m.nodes.length + " ideas";
+    }else{
+      $("pgDiagram").innerHTML = '<div class="empty">' + esc(m.reason || "No map.") + '</div>';
+      $("pgDiagState").textContent = "unavailable";
+    }
+  }catch(e){
+    $("pgDiagram").innerHTML = '<div class="empty">' + esc(e.message) + '</div>';
+    $("pgDiagState").textContent = "failed";
+  }
+}
+
+function closePage(){
+  $("page").classList.remove("on");
+  history.replaceState(null, "", location.pathname);
+}
+$("pgBack").addEventListener("click", closePage);
 
 /* ---------- the learning path ---------------------------------------
    Stages come from the roadmap; a topic is cleared when the note covering
@@ -1186,18 +1453,15 @@ async function ask(){
 $("send").addEventListener("click", ask);
 $("q").addEventListener("keydown", e => { if (e.key === "Enter") ask(); });
 
-/* ---------- source notes are one click away (makes FR6 verifiable) ---------- */
-async function openNote(slug){
-  try{
-    const n = await api("/api/note/" + slug.split("/").map(encodeURIComponent).join("/"));
-    $("mTitle").textContent = n.title;
-    $("mBody").textContent = n.body;
-    $("veil").classList.add("on");
-  }catch(e){ alert(e.message); }
-}
+/* Notes open as a page now - see openNote above. The modal is kept for
+   agent output, which is console text rather than a document. */
 $("mClose").addEventListener("click", () => $("veil").classList.remove("on"));
 $("veil").addEventListener("click", e => { if (e.target === $("veil")) $("veil").classList.remove("on"); });
-document.addEventListener("keydown", e => { if (e.key === "Escape") $("veil").classList.remove("on"); });
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if ($("page").classList.contains("on")) closePage();
+  else $("veil").classList.remove("on");
+});
 
 /* ---------- boot ---------- */
 async function boot(){
